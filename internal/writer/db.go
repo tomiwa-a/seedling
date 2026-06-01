@@ -141,19 +141,22 @@ func (w *CopyWriter) WriteTable(ctx context.Context, table *schema.Table, rows w
 	}
 
 	cols := table.ColumnNames()
-	tableName := table.Name
+
+	var identifier pgx.Identifier
 	if w.schema != "" {
-		tableName = w.schema + "." + tableName
+		identifier = pgx.Identifier{w.schema, table.Name}
+	} else {
+		identifier = pgx.Identifier{table.Name}
 	}
 
 	copyRows := &copyRowSource{cols: cols, rows: rows}
 	_, err := w.pool.CopyFrom(ctx,
-		pgx.Identifier{tableName},
+		identifier,
 		cols,
 		copyRows,
 	)
 	if err != nil {
-		return fmt.Errorf("copy into %s: %w", tableName, err)
+		return fmt.Errorf("copy into %s: %w", table.Name, err)
 	}
 
 	return nil
