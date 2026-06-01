@@ -48,11 +48,46 @@ func (g *Generator) SetHint(table, column string, hint schema.GeneratorHint) {
 }
 
 func (g *Generator) Generate(ctx context.Context, p *plan.Plan, w writer.Writer) error {
+	if p.CircularGroup != nil {
+		return g.generateCircular(ctx, p, w)
+	}
+
 	for _, tp := range p.Tables {
 		if err := g.generateTable(ctx, tp, w); err != nil {
 			return fmt.Errorf("generate %s: %w", tp.Table.Name, err)
 		}
 	}
+	return w.Close()
+}
+
+func (g *Generator) generateCircular(ctx context.Context, p *plan.Plan, w writer.Writer) error {
+	cg := p.CircularGroup
+	pass1Set := make(map[string]bool)
+	for _, name := range cg.Pass1Tables {
+		pass1Set[name] = true
+	}
+
+	pass2Set := make(map[string]bool)
+	for _, name := range cg.Pass2Tables {
+		pass2Set[name] = true
+	}
+
+	for _, tp := range p.Tables {
+		if pass1Set[tp.Table.Name] {
+			if err := g.generateTable(ctx, tp, w); err != nil {
+				return fmt.Errorf("generate %s: %w", tp.Table.Name, err)
+			}
+		}
+	}
+
+	for _, tp := range p.Tables {
+		if pass2Set[tp.Table.Name] {
+			if err := g.generateCircularTable(ctx, tp, w); err != nil {
+				return fmt.Errorf("generate %s: %w", tp.Table.Name, err)
+			}
+		}
+	}
+
 	return w.Close()
 }
 
@@ -79,6 +114,102 @@ func (g *Generator) generateTable(ctx context.Context, tp *plan.TablePlan, w wri
 				consumerKey := tp.Table.Name + "." + col.Name
 				val, err := g.pool.Consume(col.FKRef.Table, consumerKey)
 				if err != nil {
+					return fmt.Errorf("consume FK for %s: %w", col.Name, err)
+				}
+				row[col.Name] = val
+				continue
+			}
+
+			gen, ok := gens[col.Name]
+			if !ok {
+				return fmt.Errorf("no generator for column %s", col.Name)
+			}
+
+			val, err := gen.Generate(ctx, rc)
+			if err != nil {
+				return fmt.Errorf("generate %s: %w", col.Name, err)
+			}
+
+			if col.Unique {
+				key := tp.Table.Name + "." + col.Name
+				resolved, err := g.tracker.Generate(key, 100, func() any {
+					g, _ := gens[col.Name]
+					v, _ := g.Generate(ctx, rc)
+					return v
+				})
+				if err != nil {
+					return fmt.Errorf("unique constraint %s: %w", key, err)
+				}
+				val = resolved
+			}
+
+			row[col.Name] = val
+		}
+
+		for _, pk := range pkColumns {
+			if val, ok := row[pk]; ok {
+				g.pool.Add(tp.Table.Name, val)
+			}
+		}
+
+		batch = append(batch, row)
+
+		if len(batch) >= batchSize {
+			if err := w.WriteTable(ctx, tp.Table, batch); err != nil {
+				return err
+			}
+			batch = nil
+		}
+	}
+
+	if len(batch) > 0 {
+		if err := w.WriteTable(ctx, tp.Table, batch); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (g *Generator) generateCircularTable(ctx context.Context, tp *plan.TablePlan, w writer.Writer) error {
+	gens, err := g.resolveGenerators(tp.Table)
+	if err != nil {
+		return err
+	}
+
+	pkColumns := findPKColumns(tp.Table)
+	batchSize := 1000
+	var batch writer.Rows
+
+	for i := int64(0); i < int64(tp.Count); i++ {
+		row := make(writer.Row)
+		rc := &rowCtx{
+			index:  i,
+			table:  tp.Table.Name,
+			values: row,
+		}
+
+		for _, col := range tp.Table.Columns {
+			if col.FKRef != nil && col.Nullable && col.FKRef.Table == tp.Table.Name {
+				if g.pool.Count(col.FKRef.Table) > 0 {
+					val, err := g.pool.Pick(col.FKRef.Table)
+					if err == nil {
+						row[col.Name] = val
+						continue
+					}
+				}
+				row[col.Name] = nil
+				continue
+			}
+
+			if col.Unique && col.FKRef != nil {
+				consumerKey := tp.Table.Name + "." + col.Name
+				val, err := g.pool.Consume(col.FKRef.Table, consumerKey)
+				if err != nil {
+					if col.Nullable {
+						row[col.Name] = nil
+						continue
+					}
 					return fmt.Errorf("consume FK for %s: %w", col.Name, err)
 				}
 				row[col.Name] = val
