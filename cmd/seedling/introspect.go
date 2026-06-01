@@ -1,9 +1,16 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
+
+	internalintrospect "github.com/tomiwa-a/seedling/internal/introspect"
 )
 
 var introspectCmd = &cobra.Command{
@@ -14,7 +21,50 @@ foreign keys, constraints), and output the schema definition.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		db, _ := cmd.Flags().GetString("db")
 		output, _ := cmd.Flags().GetString("output")
-		fmt.Printf("introspect: db=%s output=%s (not yet implemented)\n", db, output)
+		format, _ := cmd.Flags().GetString("format")
+
+		if format == "" {
+			ext := strings.ToLower(filepath.Ext(output))
+			switch ext {
+			case ".json":
+				format = "json"
+			default:
+				format = "yaml"
+			}
+		}
+
+		ctx := cmd.Context()
+
+		introspector, err := internalintrospect.NewPostgresIntrospector(ctx, db)
+		if err != nil {
+			return fmt.Errorf("create introspector: %w", err)
+		}
+		defer introspector.Close()
+
+		schema, err := introspector.Introspect(ctx, db)
+		if err != nil {
+			return fmt.Errorf("introspect: %w", err)
+		}
+
+		var data []byte
+		switch format {
+		case "json":
+			data, err = json.MarshalIndent(schema, "", "  ")
+			if err != nil {
+				return fmt.Errorf("marshal json: %w", err)
+			}
+		default:
+			data, err = yaml.Marshal(schema)
+			if err != nil {
+				return fmt.Errorf("marshal yaml: %w", err)
+			}
+		}
+
+		if err := os.WriteFile(output, data, 0o644); err != nil {
+			return fmt.Errorf("write output: %w", err)
+		}
+
+		fmt.Printf("Schema written to %s (%s)\n", output, format)
 		return nil
 	},
 }
@@ -22,6 +72,7 @@ foreign keys, constraints), and output the schema definition.`,
 func init() {
 	introspectCmd.Flags().String("db", "", "Database DSN (required)")
 	introspectCmd.Flags().String("output", "schema.yaml", "Output file path")
+	introspectCmd.Flags().String("format", "", "Output format (yaml, json)")
 	introspectCmd.MarkFlagRequired("db")
 	rootCmd.AddCommand(introspectCmd)
 }
