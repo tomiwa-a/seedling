@@ -1,5 +1,10 @@
 # Seedling — Relational Test Data Factory
 
+[![CI](https://github.com/tomiwa-a/seedling/actions/workflows/ci.yml/badge.svg)](https://github.com/tomiwa-a/seedling/actions/workflows/ci.yml)
+[![Go Version](https://img.shields.io/badge/Go-1.24-blue)](https://go.dev/)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen)](CONTRIBUTING.md)
+
 A schema-aware test data generator that understands your database. Point it at a Postgres schema, write minimal generator configs for tables with complex logic, and it produces millions of rows that respect every foreign key, unique constraint, and column type.
 
 ## The Problem
