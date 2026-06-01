@@ -9,18 +9,18 @@ import (
 )
 
 type TablePlan struct {
-	Table      schema.Table          `json:"table" yaml:"table"`
-	Count      int                   `json:"count" yaml:"count"`
-	Generators map[string]generator.Generator `json:"-" yaml:"-"`
-	Pass       int                   `json:"pass,omitempty" yaml:"pass,omitempty"`
+	Table      *schema.Table                     `json:"table" yaml:"table"`
+	Count      int                               `json:"count" yaml:"count"`
+	Generators map[string]generator.Generator    `json:"-" yaml:"-"`
+	Pass       int                               `json:"pass,omitempty" yaml:"pass,omitempty"`
 }
 
 type Plan struct {
-	Tables      []TablePlan `json:"tables" yaml:"tables"`
-	TotalCount  int64       `json:"total_count" yaml:"total_count"`
-	Seed        int64       `json:"seed" yaml:"seed"`
-	BatchSize   int         `json:"batch_size" yaml:"batch_size"`
-	CreatedAt   time.Time   `json:"created_at" yaml:"created_at"`
+	Tables     []*TablePlan `json:"tables" yaml:"tables"`
+	TotalCount int64        `json:"total_count" yaml:"total_count"`
+	Seed       int64        `json:"seed" yaml:"seed"`
+	BatchSize  int          `json:"batch_size" yaml:"batch_size"`
+	CreatedAt  time.Time    `json:"created_at" yaml:"created_at"`
 }
 
 type PlanBuilder interface {

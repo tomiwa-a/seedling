@@ -18,7 +18,7 @@ func TestPlanBuilderFuncAdapter(t *testing.T) {
 			t.Errorf("tables length = %d", len(s.Tables))
 		}
 		return &plan.Plan{
-			Tables: []plan.TablePlan{
+			Tables: []*plan.TablePlan{
 				{Table: s.Tables[0], Count: 100},
 			},
 			TotalCount: 100,
@@ -27,7 +27,7 @@ func TestPlanBuilderFuncAdapter(t *testing.T) {
 	})
 
 	s := &schema.Schema{
-		Tables: []schema.Table{
+		Tables: []*schema.Table{
 			{Name: "users"},
 		},
 	}
@@ -49,9 +49,9 @@ func TestPlanBuilderFuncAdapter(t *testing.T) {
 
 func TestPlanTableNames(t *testing.T) {
 	p := &plan.Plan{
-		Tables: []plan.TablePlan{
-			{Table: schema.Table{Name: "users"}, Count: 100},
-			{Table: schema.Table{Name: "orders"}, Count: 500},
+		Tables: []*plan.TablePlan{
+			{Table: &schema.Table{Name: "users"}, Count: 100},
+			{Table: &schema.Table{Name: "orders"}, Count: 500},
 		},
 		TotalCount: 600,
 	}
@@ -70,9 +70,9 @@ func TestPlanTableNames(t *testing.T) {
 
 func TestPlanEstimateRowCount(t *testing.T) {
 	p := &plan.Plan{
-		Tables: []plan.TablePlan{
-			{Table: schema.Table{Name: "users"}, Count: 100},
-			{Table: schema.Table{Name: "orders"}, Count: 500},
+		Tables: []*plan.TablePlan{
+			{Table: &schema.Table{Name: "users"}, Count: 100},
+			{Table: &schema.Table{Name: "orders"}, Count: 500},
 		},
 		TotalCount: 600,
 	}
@@ -92,8 +92,8 @@ func TestPlanEmpty(t *testing.T) {
 }
 
 func TestTablePlanStruct(t *testing.T) {
-	tp := plan.TablePlan{
-		Table: schema.Table{Name: "users"},
+	tp := &plan.TablePlan{
+		Table: &schema.Table{Name: "users"},
 		Count: 1000,
 		Pass:  1,
 	}

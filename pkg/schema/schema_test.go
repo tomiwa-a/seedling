@@ -7,7 +7,7 @@ import (
 )
 
 func TestTableString(t *testing.T) {
-	tbl := schema.Table{
+	tbl := &schema.Table{
 		SchemaName: "public",
 		Name:       "users",
 	}
@@ -18,7 +18,7 @@ func TestTableString(t *testing.T) {
 }
 
 func TestTableStringNoSchema(t *testing.T) {
-	tbl := schema.Table{
+	tbl := &schema.Table{
 		Name: "users",
 	}
 	want := ".users"
@@ -28,9 +28,9 @@ func TestTableStringNoSchema(t *testing.T) {
 }
 
 func TestTableColumnNames(t *testing.T) {
-	tbl := schema.Table{
+	tbl := &schema.Table{
 		Name: "users",
-		Columns: []schema.Column{
+		Columns: []*schema.Column{
 			{Name: "id", Type: schema.TypeSerial},
 			{Name: "email", Type: schema.TypeVarchar},
 			{Name: "name", Type: schema.TypeVarchar},
@@ -49,7 +49,7 @@ func TestTableColumnNames(t *testing.T) {
 }
 
 func TestTableColumnNamesEmpty(t *testing.T) {
-	tbl := schema.Table{Name: "empty"}
+	tbl := &schema.Table{Name: "empty"}
 	got := tbl.ColumnNames()
 	if len(got) != 0 {
 		t.Errorf("ColumnNames() = %v, want empty slice", got)
@@ -57,9 +57,9 @@ func TestTableColumnNamesEmpty(t *testing.T) {
 }
 
 func TestFindColumnFound(t *testing.T) {
-	tbl := schema.Table{
+	tbl := &schema.Table{
 		Name: "users",
-		Columns: []schema.Column{
+		Columns: []*schema.Column{
 			{Name: "id", Type: schema.TypeSerial},
 			{Name: "email", Type: schema.TypeVarchar},
 		},
@@ -77,9 +77,9 @@ func TestFindColumnFound(t *testing.T) {
 }
 
 func TestFindColumnNotFound(t *testing.T) {
-	tbl := schema.Table{
+	tbl := &schema.Table{
 		Name: "users",
-		Columns: []schema.Column{
+		Columns: []*schema.Column{
 			{Name: "id", Type: schema.TypeSerial},
 		},
 	}
@@ -90,7 +90,7 @@ func TestFindColumnNotFound(t *testing.T) {
 }
 
 func TestFindColumnEmpty(t *testing.T) {
-	tbl := schema.Table{Name: "empty"}
+	tbl := &schema.Table{Name: "empty"}
 	col := tbl.FindColumn("anything")
 	if col != nil {
 		t.Errorf("FindColumn() = %v, want nil", col)
@@ -138,12 +138,12 @@ func TestGeneratorHintsAreStrings(t *testing.T) {
 }
 
 func TestSchemaStruct(t *testing.T) {
-	s := schema.Schema{
+	s := &schema.Schema{
 		Name: "public",
-		Tables: []schema.Table{
+		Tables: []*schema.Table{
 			{
 				Name: "users",
-				Columns: []schema.Column{
+				Columns: []*schema.Column{
 					{Name: "id", Type: schema.TypeSerial, Nullable: false},
 				},
 			},
@@ -158,7 +158,7 @@ func TestSchemaStruct(t *testing.T) {
 }
 
 func TestColumnFKRef(t *testing.T) {
-	col := schema.Column{
+	col := &schema.Column{
 		Name: "user_id",
 		Type: schema.TypeInteger,
 		FKRef: &schema.FKRef{
@@ -195,7 +195,7 @@ func TestConstraintTypeValues(t *testing.T) {
 }
 
 func TestForeignKeyStruct(t *testing.T) {
-	fk := schema.ForeignKey{
+	fk := &schema.ForeignKey{
 		ColumnName:     "user_id",
 		RefTable:       "users",
 		RefColumn:      "id",

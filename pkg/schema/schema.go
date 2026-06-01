@@ -3,24 +3,24 @@ package schema
 import "fmt"
 
 type Schema struct {
-	Name        string  `json:"name" yaml:"name"`
-	Description string  `json:"description,omitempty" yaml:"description,omitempty"`
-	Tables      []Table `json:"tables" yaml:"tables"`
+	Name        string   `json:"name" yaml:"name"`
+	Description string   `json:"description,omitempty" yaml:"description,omitempty"`
+	Tables      []*Table `json:"tables" yaml:"tables"`
 }
 
 type Table struct {
-	Name        string       `json:"name" yaml:"name"`
-	SchemaName  string       `json:"schema_name,omitempty" yaml:"schema_name,omitempty"`
-	Columns     []Column     `json:"columns" yaml:"columns"`
-	ForeignKeys []ForeignKey `json:"foreign_keys,omitempty" yaml:"foreign_keys,omitempty"`
-	Constraints []Constraint `json:"constraints,omitempty" yaml:"constraints,omitempty"`
+	Name        string        `json:"name" yaml:"name"`
+	SchemaName  string        `json:"schema_name,omitempty" yaml:"schema_name,omitempty"`
+	Columns     []*Column     `json:"columns" yaml:"columns"`
+	ForeignKeys []*ForeignKey `json:"foreign_keys,omitempty" yaml:"foreign_keys,omitempty"`
+	Constraints []*Constraint `json:"constraints,omitempty" yaml:"constraints,omitempty"`
 }
 
-func (t Table) String() string {
+func (t *Table) String() string {
 	return fmt.Sprintf("%s.%s", t.SchemaName, t.Name)
 }
 
-func (t Table) ColumnNames() []string {
+func (t *Table) ColumnNames() []string {
 	names := make([]string, len(t.Columns))
 	for i, c := range t.Columns {
 		names[i] = c.Name
@@ -31,7 +31,7 @@ func (t Table) ColumnNames() []string {
 func (t *Table) FindColumn(name string) *Column {
 	for i := range t.Columns {
 		if t.Columns[i].Name == name {
-			return &t.Columns[i]
+			return t.Columns[i]
 		}
 	}
 	return nil
@@ -117,20 +117,20 @@ type Constraint struct {
 type GeneratorHint string
 
 const (
-	HintAuto     GeneratorHint = "auto"
-	HintEmail    GeneratorHint = "email"
-	HintName     GeneratorHint = "full_name"
-	HintCity     GeneratorHint = "city"
-	HintCountry  GeneratorHint = "country"
-	HintPhone    GeneratorHint = "phone"
-	HintAddress  GeneratorHint = "address"
-	HintCompany  GeneratorHint = "company"
-	HintJobTitle GeneratorHint = "job_title"
-	HintURL      GeneratorHint = "url"
-	HintIP       GeneratorHint = "ip"
-	HintUUID     GeneratorHint = "uuid"
-	HintCurrency GeneratorHint = "currency"
-	HintNow      GeneratorHint = "now"
-	HintSequence GeneratorHint = "sequence"
+	HintAuto       GeneratorHint = "auto"
+	HintEmail      GeneratorHint = "email"
+	HintName       GeneratorHint = "full_name"
+	HintCity       GeneratorHint = "city"
+	HintCountry    GeneratorHint = "country"
+	HintPhone      GeneratorHint = "phone"
+	HintAddress    GeneratorHint = "address"
+	HintCompany    GeneratorHint = "company"
+	HintJobTitle   GeneratorHint = "job_title"
+	HintURL        GeneratorHint = "url"
+	HintIP         GeneratorHint = "ip"
+	HintUUID       GeneratorHint = "uuid"
+	HintCurrency   GeneratorHint = "currency"
+	HintNow        GeneratorHint = "now"
+	HintSequence   GeneratorHint = "sequence"
 	HintCategorical GeneratorHint = "categorical"
 )
