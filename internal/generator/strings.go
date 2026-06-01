@@ -7,6 +7,7 @@ import (
 	"math/big"
 	"strings"
 	"sync/atomic"
+	"time"
 
 	gen "github.com/tomiwa-a/seedling/pkg/generator"
 )
@@ -90,15 +91,35 @@ func (g *ULIDGenerator) Generate(ctx context.Context, row gen.RowContext) (any, 
 const base32Alphabet = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
 
 func newULID() string {
-	b := make([]byte, 10)
-	rand.Read(b)
-	return encodeBase32(b)
+	t := time.Now().UnixMilli()
+	ts := make([]byte, 6)
+	ts[0] = byte(t >> 40)
+	ts[1] = byte(t >> 32)
+	ts[2] = byte(t >> 24)
+	ts[3] = byte(t >> 16)
+	ts[4] = byte(t >> 8)
+	ts[5] = byte(t)
+
+	randBytes := make([]byte, 10)
+	rand.Read(randBytes)
+
+	return encodeBits(ts, 48) + encodeBits(randBytes, 80)
 }
 
-func encodeBase32(b []byte) string {
-	var result []byte
-	for _, by := range b {
-		result = append(result, base32Alphabet[by%32])
+func encodeBits(data []byte, bits int) string {
+	result := make([]byte, 0, (bits+4)/5)
+	acc := 0
+	bitsLeft := 0
+	for _, b := range data {
+		acc = (acc << 8) | int(b)
+		bitsLeft += 8
+		for bitsLeft >= 5 {
+			bitsLeft -= 5
+			result = append(result, base32Alphabet[(acc>>bitsLeft)&0x1f])
+		}
+	}
+	if bitsLeft > 0 {
+		result = append(result, base32Alphabet[(acc<<(5-bitsLeft))&0x1f])
 	}
 	return string(result)
 }
