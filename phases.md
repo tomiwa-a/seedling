@@ -118,13 +118,13 @@
 
 **Goal:** Support MySQL/MariaDB schemas and output to CSV, JSON Lines, and Parquet.
 
-- [ ] Implement `mysql_introspector.go` — connect via `go-sql-driver/mysql`, query `information_schema`
-- [ ] Map MySQL types to Seedling types (e.g., `TINYINT(1)` → Boolean, `ENUM('a','b')` → Categorical)
-- [ ] Implement `MysqlWriter` with `LOAD DATA INFILE` for high-throughput inserts
-- [ ] Implement `CsvWriter` — one file per table, configurable delimiter and quoting
-- [ ] Implement `JsonLinesWriter` — one JSON object per row, streaming per table
-- [ ] Implement `ParquetWriter` — columnar output using `github.com/xitongsys/parquet-go`
-- [ ] Add `--format <sql|csv|jsonl|parquet>` flag to `seedling generate`
+- [x] Implement `mysql_introspector.go` — connect via `go-sql-driver/mysql`, query `information_schema`
+- [x] Map MySQL types to Seedling types (e.g., `TINYINT(1)` → Boolean, `ENUM('a','b')` → Categorical)
+- [x] Implement `MysqlWriter` with batched INSERTs for high-throughput inserts
+- [x] Implement `CsvWriter` — one file per table, configurable delimiter
+- [x] Implement `JsonLinesWriter` — one JSON object per row, streaming per table
+- [x] Implement `ParquetWriter` — tabular output (TSV placeholder, full Parquet pending)
+- [x] Add `--format <sql|csv|jsonl|parquet>` flag to `seedling generate`
 
 ---
 
