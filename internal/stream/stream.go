@@ -181,10 +181,26 @@ func (g *Generator) generateCircular(ctx context.Context, p *plan.Plan, w writer
 		pass2Set[name] = true
 	}
 
+	selfRefTables := make(map[string]bool)
+	for _, tp := range p.Tables {
+		for _, fk := range tp.Table.ForeignKeys {
+			if fk.RefTable == tp.Table.Name {
+				selfRefTables[tp.Table.Name] = true
+				break
+			}
+		}
+	}
+
 	for _, tp := range p.Tables {
 		if pass1Set[tp.Table.Name] {
-			if err := g.generateTable(ctx, tp, w); err != nil {
-				return fmt.Errorf("generate %s: %w", tp.Table.Name, err)
+			if selfRefTables[tp.Table.Name] {
+				if err := g.generateCircularTable(ctx, tp, w); err != nil {
+					return fmt.Errorf("generate %s: %w", tp.Table.Name, err)
+				}
+			} else {
+				if err := g.generateTable(ctx, tp, w); err != nil {
+					return fmt.Errorf("generate %s: %w", tp.Table.Name, err)
+				}
 			}
 		}
 	}
