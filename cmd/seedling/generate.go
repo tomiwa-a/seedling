@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -29,6 +30,11 @@ schema and optional generator overrides.`,
 		dryRun, _ := cmd.Flags().GetBool("dry-run")
 		verbose, _ := cmd.Flags().GetBool("verbose")
 		batchSize, _ := cmd.Flags().GetInt("batch-size")
+		seed, _ := cmd.Flags().GetInt64("seed")
+
+		if seed == 0 {
+			seed = time.Now().UnixNano()
+		}
 
 		sch, err := loadSchema(schemaFile)
 		if err != nil {
@@ -54,6 +60,11 @@ schema and optional generator overrides.`,
 		}
 
 		sg := internalstream.New()
+		sg.SetSeed(uint64(seed))
+
+		if verbose {
+			fmt.Printf("Using seed: %d\n", seed)
+		}
 
 		for _, tp := range plan.Tables {
 			colHints := make(map[string]schema.GeneratorHint)
