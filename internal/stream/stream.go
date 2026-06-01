@@ -29,6 +29,13 @@ func (g *Generator) SetHints(table string, hints map[string]schema.GeneratorHint
 	g.hints[table] = hints
 }
 
+func (g *Generator) SetHint(table, column string, hint schema.GeneratorHint) {
+	if g.hints[table] == nil {
+		g.hints[table] = make(map[string]schema.GeneratorHint)
+	}
+	g.hints[table][column] = hint
+}
+
 func (g *Generator) Generate(ctx context.Context, p *plan.Plan, w writer.Writer) error {
 	for _, tp := range p.Tables {
 		if err := g.generateTable(ctx, tp, w); err != nil {

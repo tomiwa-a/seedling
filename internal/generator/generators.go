@@ -122,6 +122,9 @@ func ResolveGenerators(columns []*schema.Column, hints map[string]schema.Generat
 	gens := make(map[string]gen.Generator, len(columns))
 	for _, col := range columns {
 		hint := hints[col.Name]
+		if hint == "" || hint == schema.HintAuto {
+			hint = col.Hint
+		}
 		g, err := ResolveGenerator(col, hint, pool)
 		if err != nil {
 			return nil, fmt.Errorf("resolve generator for %s: %w", col.Name, err)

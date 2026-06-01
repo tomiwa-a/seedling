@@ -55,6 +55,18 @@ schema and optional generator overrides.`,
 
 		sg := internalstream.New()
 
+		for _, tp := range plan.Tables {
+			colHints := make(map[string]schema.GeneratorHint)
+			for _, col := range tp.Table.Columns {
+				if col.Hint != "" && col.Hint != schema.HintAuto {
+					colHints[col.Name] = col.Hint
+				}
+			}
+			if len(colHints) > 0 {
+				sg.SetHints(tp.Table.Name, colHints)
+			}
+		}
+
 		if configFile != "" {
 			hints, err := loadHints(configFile)
 			if err != nil {
@@ -62,7 +74,9 @@ schema and optional generator overrides.`,
 			}
 			for _, tp := range plan.Tables {
 				if h, ok := hints[tp.Table.Name]; ok {
-					sg.SetHints(tp.Table.Name, h)
+					for col, hint := range h {
+						sg.SetHint(tp.Table.Name, col, hint)
+					}
 				}
 			}
 		}

@@ -70,18 +70,19 @@ const (
 )
 
 type Column struct {
-	Name         string     `json:"name" yaml:"name"`
-	Type         ColumnType `json:"type" yaml:"type"`
-	RawType      string     `json:"raw_type,omitempty" yaml:"raw_type,omitempty"`
-	Nullable     bool       `json:"nullable" yaml:"nullable"`
-	Unique       bool       `json:"unique,omitempty" yaml:"unique,omitempty"`
-	Default      *string    `json:"default,omitempty" yaml:"default,omitempty"`
-	FKRef        *FKRef     `json:"fk_ref,omitempty" yaml:"fk_ref,omitempty"`
-	Comment      string     `json:"comment,omitempty" yaml:"comment,omitempty"`
-	EnumValues   []string   `json:"enum_values,omitempty" yaml:"enum_values,omitempty"`
-	MaxLength    int        `json:"max_length,omitempty" yaml:"max_length,omitempty"`
-	NumericScale int        `json:"numeric_scale,omitempty" yaml:"numeric_scale,omitempty"`
-	NumericPrec  int        `json:"numeric_precision,omitempty" yaml:"numeric_precision,omitempty"`
+	Name         string        `json:"name" yaml:"name"`
+	Type         ColumnType    `json:"type" yaml:"type"`
+	RawType      string        `json:"raw_type,omitempty" yaml:"raw_type,omitempty"`
+	Nullable     bool          `json:"nullable" yaml:"nullable"`
+	Unique       bool          `json:"unique,omitempty" yaml:"unique,omitempty"`
+	Default      *string       `json:"default,omitempty" yaml:"default,omitempty"`
+	FKRef        *FKRef        `json:"fk_ref,omitempty" yaml:"fk_ref,omitempty"`
+	Comment      string        `json:"comment,omitempty" yaml:"comment,omitempty"`
+	Hint         GeneratorHint `json:"hint,omitempty" yaml:"hint,omitempty"`
+	EnumValues   []string      `json:"enum_values,omitempty" yaml:"enum_values,omitempty"`
+	MaxLength    int           `json:"max_length,omitempty" yaml:"max_length,omitempty"`
+	NumericScale int           `json:"numeric_scale,omitempty" yaml:"numeric_scale,omitempty"`
+	NumericPrec  int           `json:"numeric_precision,omitempty" yaml:"numeric_precision,omitempty"`
 }
 
 type FKRef struct {

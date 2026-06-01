@@ -94,6 +94,7 @@ func (pi *PostgresIntrospector) extractTables(ctx context.Context) ([]*schema.Ta
 			if hint == schema.HintAuto {
 				hint = hintFromComment(columns[i].Comment)
 			}
+			columns[i].Hint = hint
 		}
 
 		fks, err := pi.extractForeignKeys(ctx, pi.schemas[0], tableName)
