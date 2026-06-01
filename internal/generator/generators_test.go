@@ -279,7 +279,7 @@ func TestResolveGeneratorByFK(t *testing.T) {
 	pool.Add("users", int64(1))
 	pool.Add("users", int64(2))
 
-	col := schema.Column{
+	col := &schema.Column{
 		Name: "user_id",
 		FKRef: &schema.FKRef{
 			Table:  "users",
@@ -305,18 +305,18 @@ func TestResolveGeneratorByFK(t *testing.T) {
 func TestResolveGeneratorByType(t *testing.T) {
 	pool := NewFKPool()
 	tests := []struct {
-		col  schema.Column
+		col  *schema.Column
 		name string
 	}{
-		{schema.Column{Name: "id", Type: schema.TypeSerial}, "serial"},
-		{schema.Column{Name: "count", Type: schema.TypeInteger}, "integer"},
-		{schema.Column{Name: "active", Type: schema.TypeBoolean}, "boolean"},
-		{schema.Column{Name: "body", Type: schema.TypeText}, "text"},
-		{schema.Column{Name: "uid", Type: schema.TypeUUID}, "uuid"},
-		{schema.Column{Name: "created", Type: schema.TypeTimestamptz}, "timestamptz"},
-		{schema.Column{Name: "amount", Type: schema.TypeNumeric}, "numeric"},
-		{schema.Column{Name: "data", Type: schema.TypeJSONB}, "jsonb"},
-		{schema.Column{Name: "action", Type: schema.TypeEnum, EnumValues: []string{"A", "B"}}, "enum"},
+		{&schema.Column{Name: "id", Type: schema.TypeSerial}, "serial"},
+		{&schema.Column{Name: "count", Type: schema.TypeInteger}, "integer"},
+		{&schema.Column{Name: "active", Type: schema.TypeBoolean}, "boolean"},
+		{&schema.Column{Name: "body", Type: schema.TypeText}, "text"},
+		{&schema.Column{Name: "uid", Type: schema.TypeUUID}, "uuid"},
+		{&schema.Column{Name: "created", Type: schema.TypeTimestamptz}, "timestamptz"},
+		{&schema.Column{Name: "amount", Type: schema.TypeNumeric}, "numeric"},
+		{&schema.Column{Name: "data", Type: schema.TypeJSONB}, "jsonb"},
+		{&schema.Column{Name: "action", Type: schema.TypeEnum, EnumValues: []string{"A", "B"}}, "enum"},
 	}
 
 	for _, tt := range tests {
@@ -343,13 +343,13 @@ func TestResolveGeneratorByType(t *testing.T) {
 func TestResolveGeneratorByHint(t *testing.T) {
 	pool := NewFKPool()
 	tests := []struct {
-		col  schema.Column
+		col  *schema.Column
 		hint schema.GeneratorHint
 		name string
 	}{
-		{schema.Column{Name: "email", Type: schema.TypeVarchar}, schema.HintEmail, "email"},
-		{schema.Column{Name: "city", Type: schema.TypeVarchar}, schema.HintCity, "city"},
-		{schema.Column{Name: "phone", Type: schema.TypeVarchar}, schema.HintPhone, "phone"},
+		{&schema.Column{Name: "email", Type: schema.TypeVarchar}, schema.HintEmail, "email"},
+		{&schema.Column{Name: "city", Type: schema.TypeVarchar}, schema.HintCity, "city"},
+		{&schema.Column{Name: "phone", Type: schema.TypeVarchar}, schema.HintPhone, "phone"},
 	}
 
 	for _, tt := range tests {
@@ -375,7 +375,7 @@ func TestResolveGeneratorByHint(t *testing.T) {
 
 func TestResolveGenerators(t *testing.T) {
 	pool := NewFKPool()
-	columns := []schema.Column{
+	columns := []*schema.Column{
 		{Name: "id", Type: schema.TypeSerial},
 		{Name: "email", Type: schema.TypeVarchar},
 		{Name: "name", Type: schema.TypeVarchar},

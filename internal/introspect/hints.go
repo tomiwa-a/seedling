@@ -6,7 +6,7 @@ import (
 	"github.com/tomiwa-a/seedling/pkg/schema"
 )
 
-func detectGeneratorHint(col schema.Column) schema.GeneratorHint {
+func detectGeneratorHint(col *schema.Column) schema.GeneratorHint {
 	name := strings.ToLower(col.Name)
 
 	switch {

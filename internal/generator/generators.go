@@ -243,7 +243,7 @@ func randomPickWithDefault(custom, fallback []string) string {
 	return randomPick(fallback)
 }
 
-func ResolveGenerator(col schema.Column, hint schema.GeneratorHint, pool *FKPool) (gen.Generator, error) {
+func ResolveGenerator(col *schema.Column, hint schema.GeneratorHint, pool *FKPool) (gen.Generator, error) {
 	if col.FKRef != nil {
 		return &FKResolver{Table: col.FKRef.Table, pool: pool}, nil
 	}
@@ -315,7 +315,7 @@ func ResolveGenerator(col schema.Column, hint schema.GeneratorHint, pool *FKPool
 	}
 }
 
-func ResolveGenerators(columns []schema.Column, hints map[string]schema.GeneratorHint, pool *FKPool) (map[string]gen.Generator, error) {
+func ResolveGenerators(columns []*schema.Column, hints map[string]schema.GeneratorHint, pool *FKPool) (map[string]gen.Generator, error) {
 	gens := make(map[string]gen.Generator, len(columns))
 	for _, col := range columns {
 		hint := hints[col.Name]

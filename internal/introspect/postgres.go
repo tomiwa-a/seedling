@@ -55,7 +55,7 @@ func (pi *PostgresIntrospector) introspect(ctx context.Context) (*schema.Schema,
 	}, nil
 }
 
-func (pi *PostgresIntrospector) extractTables(ctx context.Context) ([]schema.Table, error) {
+func (pi *PostgresIntrospector) extractTables(ctx context.Context) ([]*schema.Table, error) {
 	rows, err := pi.pool.Query(ctx, `
 		SELECT table_name, table_type
 		FROM information_schema.tables
@@ -68,7 +68,7 @@ func (pi *PostgresIntrospector) extractTables(ctx context.Context) ([]schema.Tab
 	}
 	defer rows.Close()
 
-	var tables []schema.Table
+	var tables []*schema.Table
 	for rows.Next() {
 		var tableName, tableType string
 		if err := rows.Scan(&tableName, &tableType); err != nil {
@@ -123,7 +123,7 @@ func (pi *PostgresIntrospector) extractTables(ctx context.Context) ([]schema.Tab
 			}
 		}
 
-		tables = append(tables, schema.Table{
+		tables = append(tables, &schema.Table{
 			Name:        tableName,
 			SchemaName:  pi.schemas[0],
 			Columns:     columns,
@@ -146,7 +146,7 @@ type rawColumn struct {
 	UDTName           string
 }
 
-func (pi *PostgresIntrospector) extractColumns(ctx context.Context, schemaName, tableName string) ([]schema.Column, error) {
+func (pi *PostgresIntrospector) extractColumns(ctx context.Context, schemaName, tableName string) ([]*schema.Column, error) {
 	rows, err := pi.pool.Query(ctx, `
 		SELECT
 			column_name,
@@ -166,7 +166,7 @@ func (pi *PostgresIntrospector) extractColumns(ctx context.Context, schemaName, 
 	}
 	defer rows.Close()
 
-	var columns []schema.Column
+	var columns []*schema.Column
 	for rows.Next() {
 		var rc rawColumn
 		if err := rows.Scan(
@@ -184,7 +184,7 @@ func (pi *PostgresIntrospector) extractColumns(ctx context.Context, schemaName, 
 
 		colType := mapColumnType(rc.UDTName, rc.DataType)
 
-		col := schema.Column{
+		col := &schema.Column{
 			Name:     rc.Name,
 			Type:     colType,
 			RawType:  rc.UDTName,
@@ -215,7 +215,7 @@ func (pi *PostgresIntrospector) extractColumns(ctx context.Context, schemaName, 
 	return columns, rows.Err()
 }
 
-func (pi *PostgresIntrospector) extractForeignKeys(ctx context.Context, schemaName, tableName string) ([]schema.ForeignKey, error) {
+func (pi *PostgresIntrospector) extractForeignKeys(ctx context.Context, schemaName, tableName string) ([]*schema.ForeignKey, error) {
 	rows, err := pi.pool.Query(ctx, `
 		SELECT
 			kcu.column_name,
@@ -244,9 +244,9 @@ func (pi *PostgresIntrospector) extractForeignKeys(ctx context.Context, schemaNa
 	}
 	defer rows.Close()
 
-	var fks []schema.ForeignKey
+	var fks []*schema.ForeignKey
 	for rows.Next() {
-		var fk schema.ForeignKey
+		fk := &schema.ForeignKey{}
 		if err := rows.Scan(
 			&fk.ColumnName,
 			&fk.RefTable,
@@ -296,9 +296,9 @@ func (pi *PostgresIntrospector) extractColumnComments(ctx context.Context, schem
 	return comments, rows.Err()
 }
 
-func (pi *PostgresIntrospector) extractConstraints(ctx context.Context, schemaName, tableName string) ([]schema.Constraint, map[string]bool, error) {
+func (pi *PostgresIntrospector) extractConstraints(ctx context.Context, schemaName, tableName string) ([]*schema.Constraint, map[string]bool, error) {
 	uniqueCols := make(map[string]bool)
-	var constraints []schema.Constraint
+	var constraints []*schema.Constraint
 
 	rows, err := pi.pool.Query(ctx, `
 		SELECT
@@ -331,7 +331,7 @@ func (pi *PostgresIntrospector) extractConstraints(ctx context.Context, schemaNa
 
 	flushConstraint := func() {
 		if currentConstraint != "" {
-			c := schema.Constraint{
+			c := &schema.Constraint{
 				Type:    currentType,
 				Name:    currentName,
 				Columns: currentCols,
@@ -385,5 +385,3 @@ func (pi *PostgresIntrospector) Close() {
 		pi.pool.Close()
 	}
 }
-
-
