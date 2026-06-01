@@ -2,8 +2,16 @@ package main
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
+
+	internalplanbuilder "github.com/tomiwa-a/seedling/internal/planbuilder"
+	internalstream "github.com/tomiwa-a/seedling/internal/stream"
+	internalwriter "github.com/tomiwa-a/seedling/internal/writer"
+
+	"github.com/tomiwa-a/seedling/pkg/schema"
 )
 
 var generateCmd = &cobra.Command{
@@ -12,20 +20,109 @@ var generateCmd = &cobra.Command{
 	Long: `Generate realistic test data based on an introspected
 schema and optional generator overrides.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		ctx := cmd.Context()
+
 		count, _ := cmd.Flags().GetInt("count")
-		seed, _ := cmd.Flags().GetInt64("seed")
-		db, _ := cmd.Flags().GetString("db")
 		output, _ := cmd.Flags().GetString("output")
-		fmt.Printf("generate: count=%d seed=%d db=%s output=%s (not yet implemented)\n", count, seed, db, output)
+		schemaFile, _ := cmd.Flags().GetString("schema")
+		configFile, _ := cmd.Flags().GetString("config")
+		dryRun, _ := cmd.Flags().GetBool("dry-run")
+		verbose, _ := cmd.Flags().GetBool("verbose")
+		batchSize, _ := cmd.Flags().GetInt("batch-size")
+
+		sch, err := loadSchema(schemaFile)
+		if err != nil {
+			return fmt.Errorf("load schema: %w", err)
+		}
+
+		if verbose {
+			fmt.Printf("Loaded schema: %s (%d tables)\n", sch.Name, len(sch.Tables))
+		}
+
+		pb := internalplanbuilder.New(count)
+		plan, err := pb.Build(ctx, sch, nil)
+		if err != nil {
+			return fmt.Errorf("build plan: %w", err)
+		}
+
+		if dryRun {
+			fmt.Printf("Plan: %d total rows across %d tables\n", plan.TotalCount, len(plan.Tables))
+			for _, tp := range plan.Tables {
+				fmt.Printf("  %s: %d rows\n", tp.Table.Name, tp.Count)
+			}
+			return nil
+		}
+
+		sg := internalstream.New()
+
+		if configFile != "" {
+			hints, err := loadHints(configFile)
+			if err != nil {
+				return err
+			}
+			for _, tp := range plan.Tables {
+				if h, ok := hints[tp.Table.Name]; ok {
+					sg.SetHints(tp.Table.Name, h)
+				}
+			}
+		}
+
+		outFile, err := os.Create(output)
+		if err != nil {
+			return fmt.Errorf("create output: %w", err)
+		}
+		defer outFile.Close()
+
+		sw := internalwriter.NewSqlWriter(outFile, internalwriter.WithBatchSize(batchSize))
+
+		if verbose {
+			fmt.Printf("Generating %d rows across %d tables...\n", plan.TotalCount, len(plan.Tables))
+		}
+
+		if err := sg.Generate(ctx, plan, sw); err != nil {
+			return fmt.Errorf("generate: %w", err)
+		}
+
+		if verbose {
+			fmt.Printf("Output written to %s\n", output)
+		}
 		return nil
 	},
+}
+
+type hintsFile map[string]map[string]schema.GeneratorHint
+
+func loadSchema(path string) (*schema.Schema, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("read schema file: %w", err)
+	}
+
+	var sch schema.Schema
+	if err := yaml.Unmarshal(data, &sch); err != nil {
+		return nil, fmt.Errorf("parse schema: %w", err)
+	}
+	return &sch, nil
+}
+
+func loadHints(path string) (map[string]map[string]schema.GeneratorHint, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("read config file: %w", err)
+	}
+
+	var hf hintsFile
+	if err := yaml.Unmarshal(data, &hf); err != nil {
+		return nil, fmt.Errorf("parse config: %w", err)
+	}
+	return hf, nil
 }
 
 func init() {
 	generateCmd.Flags().Int("count", 100, "Number of rows per root table")
 	generateCmd.Flags().Int64("seed", 0, "Random seed (0 = random)")
-	generateCmd.Flags().String("db", "", "Database DSN for direct insert")
-	generateCmd.Flags().String("output", "seed.sql", "Output file or directory")
+	generateCmd.Flags().String("schema", "schema.yaml", "Schema file path")
+	generateCmd.Flags().String("output", "seed.sql", "Output file path")
 	generateCmd.Flags().String("format", "sql", "Output format (sql, csv, jsonl, parquet)")
 	generateCmd.Flags().Int("batch-size", 1000, "Rows per batch")
 	generateCmd.Flags().Bool("copy", false, "Use COPY protocol (Postgres only)")

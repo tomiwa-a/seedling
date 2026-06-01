@@ -57,6 +57,16 @@ func (g *Generator) generateTable(ctx context.Context, tp plan.TablePlan, w writ
 		}
 
 		for _, col := range tp.Table.Columns {
+			if col.Unique && col.FKRef != nil {
+				consumerKey := tp.Table.Name + "." + col.Name
+				val, err := g.pool.Consume(col.FKRef.Table, consumerKey)
+				if err != nil {
+					return fmt.Errorf("consume FK for %s: %w", col.Name, err)
+				}
+				row[col.Name] = val
+				continue
+			}
+
 			gen, ok := gens[col.Name]
 			if !ok {
 				return fmt.Errorf("no generator for column %s", col.Name)

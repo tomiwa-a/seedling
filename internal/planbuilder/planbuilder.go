@@ -36,7 +36,8 @@ func (b *Builder) Build(ctx context.Context, s *schema.Schema, configs []generat
 		return nil, fmt.Errorf("topological sort: %w", err)
 	}
 
-	counts := computeCounts(ordered, deps, b.rootCount)
+	uniqueFKs := buildUniqueFKMap(s.Tables)
+	counts := computeCounts(ordered, deps, uniqueFKs, b.rootCount)
 
 	var tablePlans []plan.TablePlan
 	var totalCount int64
@@ -121,7 +122,24 @@ func topologicalSort(tables []schema.Table, deps map[string][]string) ([]*schema
 	return sorted, nil
 }
 
-func computeCounts(ordered []*schema.Table, deps map[string][]string, rootCount int) map[string]int {
+func buildUniqueFKMap(tables []schema.Table) map[string]struct{} {
+	uniqueFK := make(map[string]struct{})
+	for _, t := range tables {
+		fkCols := make(map[string]bool)
+		for _, fk := range t.ForeignKeys {
+			fkCols[fk.ColumnName] = true
+		}
+		for _, c := range t.Columns {
+			if c.Unique && fkCols[c.Name] {
+				uniqueFK[t.Name] = struct{}{}
+				break
+			}
+		}
+	}
+	return uniqueFK
+}
+
+func computeCounts(ordered []*schema.Table, deps map[string][]string, uniqueFKs map[string]struct{}, rootCount int) map[string]int {
 	counts := make(map[string]int)
 	tableSet := make(map[string]bool)
 	for _, t := range ordered {
@@ -142,7 +160,11 @@ func computeCounts(ordered []*schema.Table, deps map[string][]string, rootCount 
 				}
 			}
 			if maxParentCount == 0 {
-				counts[t.Name] = rootCount * 10
+				maxParentCount = rootCount
+			}
+
+			if _, hasUniqueFK := uniqueFKs[t.Name]; hasUniqueFK {
+				counts[t.Name] = maxParentCount
 			} else {
 				multiplier := 5 + int(cryptoRandIntn(11))
 				counts[t.Name] = maxParentCount * multiplier
