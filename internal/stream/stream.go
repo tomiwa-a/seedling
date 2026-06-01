@@ -22,16 +22,22 @@ type Generator struct {
 	seed       uint64
 	onProgress ProgressFunc
 	parallel   bool
+	overrides  map[string]*generator.TableConfig
 }
 
 func New() *Generator {
 	return &Generator{
-		pool:    genlib.NewFKPool(),
-		tracker: genlib.NewUniqueTracker(),
-		hints:   make(map[string]map[string]schema.GeneratorHint),
-		seed:    0,
-		parallel: false,
+		pool:      genlib.NewFKPool(),
+		tracker:   genlib.NewUniqueTracker(),
+		hints:     make(map[string]map[string]schema.GeneratorHint),
+		seed:      0,
+		parallel:  false,
+		overrides: make(map[string]*generator.TableConfig),
 	}
+}
+
+func (g *Generator) SetOverrides(configs map[string]*generator.TableConfig) {
+	g.overrides = configs
 }
 
 func (g *Generator) SetProgress(fn ProgressFunc) {
@@ -409,7 +415,23 @@ func (g *Generator) resolveGenerators(tbl *schema.Table) (map[string]generator.G
 	if tableHints == nil {
 		tableHints = make(map[string]schema.GeneratorHint)
 	}
-	return genlib.ResolveGenerators(tbl.Columns, tableHints, g.pool, g.seed, tbl.Name)
+
+	autoGens, err := genlib.ResolveGenerators(tbl.Columns, tableHints, g.pool, g.seed, tbl.Name)
+	if err != nil {
+		return nil, err
+	}
+
+	if overrides, ok := g.overrides[tbl.Name]; ok {
+		for colName, override := range overrides.Columns {
+			if override.Disabled {
+				delete(autoGens, colName)
+			} else if override.Generator != nil {
+				autoGens[colName] = override.Generator
+			}
+		}
+	}
+
+	return autoGens, nil
 }
 
 func findPKColumns(tbl *schema.Table) []string {
