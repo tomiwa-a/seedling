@@ -80,6 +80,22 @@ func (pi *PostgresIntrospector) extractTables(ctx context.Context) ([]schema.Tab
 			return nil, fmt.Errorf("extract columns for %s: %w", tableName, err)
 		}
 
+		comments, err := pi.extractColumnComments(ctx, pi.schemas[0], tableName)
+		if err == nil {
+			for i := range columns {
+				if c, ok := comments[columns[i].Name]; ok {
+					columns[i].Comment = c
+				}
+			}
+		}
+
+		for i := range columns {
+			hint := detectGeneratorHint(columns[i])
+			if hint == schema.HintAuto {
+				hint = hintFromComment(columns[i].Comment)
+			}
+		}
+
 		fks, err := pi.extractForeignKeys(ctx, pi.schemas[0], tableName)
 		if err != nil {
 			return nil, fmt.Errorf("extract foreign keys for %s: %w", tableName, err)
@@ -245,6 +261,39 @@ func (pi *PostgresIntrospector) extractForeignKeys(ctx context.Context, schemaNa
 	}
 
 	return fks, rows.Err()
+}
+
+func (pi *PostgresIntrospector) extractColumnComments(ctx context.Context, schemaName, tableName string) (map[string]string, error) {
+	rows, err := pi.pool.Query(ctx, `
+		SELECT
+			a.attname AS column_name,
+			pg_catalog.col_description(a.attrelid, a.attnum) AS comment
+		FROM pg_catalog.pg_attribute a
+		JOIN pg_catalog.pg_class c ON a.attrelid = c.oid
+		JOIN pg_catalog.pg_namespace n ON c.relnamespace = n.oid
+		WHERE n.nspname = $1
+			AND c.relname = $2
+			AND a.attnum > 0
+			AND NOT a.attisdropped
+	`, schemaName, tableName)
+	if err != nil {
+		return nil, fmt.Errorf("query column comments: %w", err)
+	}
+	defer rows.Close()
+
+	comments := make(map[string]string)
+	for rows.Next() {
+		var colName string
+		var comment *string
+		if err := rows.Scan(&colName, &comment); err != nil {
+			return nil, fmt.Errorf("scan comment row: %w", err)
+		}
+		if comment != nil {
+			comments[colName] = *comment
+		}
+	}
+
+	return comments, rows.Err()
 }
 
 func (pi *PostgresIntrospector) extractConstraints(ctx context.Context, schemaName, tableName string) ([]schema.Constraint, map[string]bool, error) {
