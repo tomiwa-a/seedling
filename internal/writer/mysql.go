@@ -54,9 +54,33 @@ func (w *MysqlWriter) WriteTable(ctx context.Context, table *schema.Table, rows 
 	cols := table.ColumnNames()
 
 	maxLengths := make(map[string]int)
+	numericBounds := make(map[string][2]float64)
 	for _, col := range table.Columns {
 		if col.MaxLength > 0 {
 			maxLengths[col.Name] = col.MaxLength
+		}
+		if col.NumericPrec > 0 {
+			scale := col.NumericScale
+			prec := col.NumericScale
+			if prec == 0 {
+				prec = col.NumericPrec
+			}
+			maxVal := 1.0
+			for i := 0; i < prec; i++ {
+				maxVal *= 10
+			}
+			if scale > 0 {
+				maxVal = maxVal - 1
+				scaleFactor := 1.0
+				for i := 0; i < scale; i++ {
+					scaleFactor *= 10
+				}
+				maxVal = maxVal / scaleFactor
+			} else {
+				maxVal = maxVal - 1
+			}
+			minVal := -maxVal
+			numericBounds[col.Name] = [2]float64{minVal, maxVal}
 		}
 	}
 
@@ -91,6 +115,9 @@ func (w *MysqlWriter) WriteTable(ctx context.Context, table *schema.Table, rows 
 				val := row[col]
 				if ml, ok := maxLengths[col]; ok {
 					val = truncateStringValue(val, ml)
+				}
+				if bounds, ok := numericBounds[col]; ok {
+					val = clampNumericValue(val, bounds[0], bounds[1])
 				}
 				writeMySQLValue(&buf, val)
 			}
@@ -194,4 +221,32 @@ func truncateStringValue(v any, maxLen int) any {
 		return s[:maxLen]
 	}
 	return v
+}
+
+func clampNumericValue(v any, min, max float64) any {
+	if v == nil {
+		return v
+	}
+	var f float64
+	switch val := v.(type) {
+	case int:
+		f = float64(val)
+	case int64:
+		f = float64(val)
+	case int32:
+		f = float64(val)
+	case float64:
+		f = val
+	case float32:
+		f = float64(val)
+	default:
+		return v
+	}
+	if f < min {
+		return min
+	}
+	if f > max {
+		return max
+	}
+	return f
 }

@@ -116,6 +116,14 @@ func (mi *MysqlIntrospector) extractTables(ctx context.Context) ([]*schema.Table
 			}
 		}
 
+		jsonCols := mi.extractJsonColumns(ctx, tableName)
+		for i := range columns {
+			if jsonCols[columns[i].Name] {
+				columns[i].Type = schema.TypeJSON
+				columns[i].RawType = "json"
+			}
+		}
+
 		tables = append(tables, &schema.Table{
 			Name:        tableName,
 			Columns:     columns,
@@ -318,6 +326,41 @@ func (mi *MysqlIntrospector) Close() {
 	if mi.db != nil {
 		mi.db.Close()
 	}
+}
+
+func (mi *MysqlIntrospector) extractJsonColumns(ctx context.Context, tableName string) map[string]bool {
+	jsonCols := make(map[string]bool)
+	query := `
+		SELECT CHECK_CLAUSE
+		FROM information_schema.CHECK_CONSTRAINTS
+		WHERE CONSTRAINT_SCHEMA = DATABASE()
+		AND CHECK_CLAUSE LIKE '%json_valid%'
+	`
+	rows, err := mi.db.QueryContext(ctx, query)
+	if err != nil {
+		return jsonCols
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var expr string
+		if err := rows.Scan(&expr); err != nil {
+			continue
+		}
+		expr = strings.ToLower(expr)
+		if strings.Contains(expr, "json_valid") {
+			start := strings.Index(expr, "json_valid(")
+			if start >= 0 {
+				rest := expr[start+len("json_valid("):]
+				end := strings.Index(rest, ")")
+				if end > 0 {
+					colName := strings.Trim(strings.TrimPrefix(rest[:end], "`"), "`")
+					jsonCols[colName] = true
+				}
+			}
+		}
+	}
+	return jsonCols
 }
 
 func mapMysqlType(columnType, extra string) schema.ColumnType {
