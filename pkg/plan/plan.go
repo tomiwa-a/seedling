@@ -16,11 +16,18 @@ type TablePlan struct {
 }
 
 type Plan struct {
-	Tables     []*TablePlan `json:"tables" yaml:"tables"`
-	TotalCount int64        `json:"total_count" yaml:"total_count"`
-	Seed       int64        `json:"seed" yaml:"seed"`
-	BatchSize  int          `json:"batch_size" yaml:"batch_size"`
-	CreatedAt  time.Time    `json:"created_at" yaml:"created_at"`
+	Tables        []*TablePlan     `json:"tables" yaml:"tables"`
+	CircularGroup *CircularGroup   `json:"circular_group,omitempty" yaml:"circular_group,omitempty"`
+	TotalCount    int64            `json:"total_count" yaml:"total_count"`
+	Seed          int64            `json:"seed" yaml:"seed"`
+	BatchSize     int              `json:"batch_size" yaml:"batch_size"`
+	CreatedAt     time.Time        `json:"created_at" yaml:"created_at"`
+}
+
+type CircularGroup struct {
+	Pass1Tables []string `json:"pass1_tables" yaml:"pass1_tables"`
+	Pass2Tables []string `json:"pass2_tables" yaml:"pass2_tables"`
+	CycleEdges  []string `json:"cycle_edges" yaml:"cycle_edges"`
 }
 
 type PlanBuilder interface {
