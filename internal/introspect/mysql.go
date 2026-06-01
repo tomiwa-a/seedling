@@ -326,6 +326,13 @@ func mapMysqlType(columnType, extra string) schema.ColumnType {
 		return schema.TypeEnum
 	}
 
+	if strings.Contains(extra, "auto_increment") {
+		if strings.HasPrefix(colType, "bigint") {
+			return schema.TypeBigSerial
+		}
+		return schema.TypeSerial
+	}
+
 	if strings.HasPrefix(colType, "tinyint") {
 		if strings.Contains(colType, "unsigned") {
 			return schema.TypeSmallInt
@@ -372,7 +379,7 @@ func mapMysqlType(columnType, extra string) schema.ColumnType {
 		return schema.TypeChar
 	}
 
-	if colType == "text" || strings.HasPrefix(colType, "text") {
+	if strings.HasPrefix(colType, "text") || colType == "tinytext" || colType == "mediumtext" || colType == "longtext" {
 		return schema.TypeText
 	}
 
@@ -400,14 +407,14 @@ func mapMysqlType(columnType, extra string) schema.ColumnType {
 		return schema.TypeJSON
 	}
 
-	if strings.Contains(extra, "auto_increment") {
-		return schema.TypeSerial
-	}
-
 	return schema.TypeUnknown
 }
 
 func extractEnumValuesFromType(colType string) []string {
+	if !strings.HasPrefix(colType, "enum") {
+		return nil
+	}
+
 	start := strings.Index(colType, "(")
 	end := strings.LastIndex(colType, ")")
 	if start < 0 || end < 0 || end <= start {

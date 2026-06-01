@@ -101,6 +101,8 @@ func ResolveGenerator(col *schema.Column, hint schema.GeneratorHint, pool *FKPoo
 		return &DateGenerator{MinYear: 2024, MaxYear: 2026}, nil
 	case schema.TypeTimestamp, schema.TypeTimestamptz:
 		return &TimestampGenerator{}, nil
+	case schema.TypeTime:
+		return &TimeGenerator{}, nil
 	case schema.TypeNumeric, schema.TypeFloat, schema.TypeDouble, schema.TypeReal, schema.TypeMoney:
 		return &NumericGenerator{Min: 100, Max: 999999}, nil
 	case schema.TypeJSON, schema.TypeJSONB:

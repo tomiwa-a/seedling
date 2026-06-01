@@ -11,13 +11,15 @@ import (
 	"gopkg.in/yaml.v3"
 
 	internalintrospect "github.com/tomiwa-a/seedling/internal/introspect"
+	"github.com/tomiwa-a/seedling/pkg/schema"
 )
 
 var introspectCmd = &cobra.Command{
 	Use:   "introspect",
 	Short: "Introspect a database schema",
 	Long: `Connect to a database, read its schema (tables, columns,
-foreign keys, constraints), and output the schema definition.`,
+foreign keys, constraints), and output the schema definition.
+Supports PostgreSQL and MySQL/MariaDB.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		db, _ := cmd.Flags().GetString("db")
 		output, _ := cmd.Flags().GetString("output")
@@ -35,13 +37,25 @@ foreign keys, constraints), and output the schema definition.`,
 
 		ctx := cmd.Context()
 
-		introspector, err := internalintrospect.NewPostgresIntrospector(ctx, db)
-		if err != nil {
-			return fmt.Errorf("create introspector: %w", err)
-		}
-		defer introspector.Close()
+		var schema *schema.Schema
+		var err error
 
-		schema, err := introspector.Introspect(ctx, db)
+		if isMysqlDSN(db) {
+			introspector, err := internalintrospect.NewMysqlIntrospector(ctx, db)
+			if err != nil {
+				return fmt.Errorf("create mysql introspector: %w", err)
+			}
+			defer introspector.Close()
+			schema, err = introspector.Introspect(ctx, db)
+		} else {
+			introspector, err := internalintrospect.NewPostgresIntrospector(ctx, db)
+			if err != nil {
+				return fmt.Errorf("create postgres introspector: %w", err)
+			}
+			defer introspector.Close()
+			schema, err = introspector.Introspect(ctx, db)
+		}
+
 		if err != nil {
 			return fmt.Errorf("introspect: %w", err)
 		}
@@ -67,6 +81,16 @@ foreign keys, constraints), and output the schema definition.`,
 		fmt.Printf("Schema written to %s (%s)\n", output, format)
 		return nil
 	},
+}
+
+func isMysqlDSN(dsn string) bool {
+	lower := strings.ToLower(dsn)
+	return strings.Contains(lower, "tcp(") ||
+		strings.Contains(lower, "mysql") ||
+		strings.Contains(lower, "mariadb") ||
+		(!strings.Contains(lower, "postgres://") &&
+			!strings.Contains(lower, "postgresql://") &&
+			strings.Contains(lower, "@"))
 }
 
 func init() {

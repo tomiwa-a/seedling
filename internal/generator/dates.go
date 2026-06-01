@@ -106,3 +106,20 @@ func (g *BusinessDaysGenerator) Generate(ctx context.Context, row gen.RowContext
 	}
 	return t.Format("2006-01-02"), nil
 }
+
+type TimeGenerator struct {
+	rnd *rand.Rand
+}
+
+func (g *TimeGenerator) SetRand(rnd *rand.Rand) { g.rnd = rnd }
+
+func (g *TimeGenerator) Generate(ctx context.Context, row gen.RowContext) (any, error) {
+	rnd := g.rnd
+	if rnd == nil {
+		rnd = rand.New(rand.NewSource(0))
+	}
+	h := rnd.Intn(24)
+	m := rnd.Intn(60)
+	s := rnd.Intn(60)
+	return fmt.Sprintf("%02d:%02d:%02d", h, m, s), nil
+}

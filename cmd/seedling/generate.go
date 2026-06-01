@@ -120,7 +120,10 @@ schema and optional generator overrides.`,
 			}
 
 			var dbWriter writerinterface.Writer
-			if useCopy {
+			if isMysqlDSN(dbDSN) {
+				dbWriter, err = internalwriter.NewMysqlWriter(ctx, dbDSN,
+					internalwriter.WithMysqlBatchSize(batchSize))
+			} else if useCopy {
 				dbWriter, err = internalwriter.NewCopyWriter(ctx, dbDSN,
 					internalwriter.WithDbSchema(sch.Name),
 					internalwriter.WithDbBatchSize(batchSize))

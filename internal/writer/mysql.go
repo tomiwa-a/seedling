@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+	"time"
 
 	_ "github.com/go-sql-driver/mysql"
 
@@ -52,6 +53,13 @@ func (w *MysqlWriter) WriteTable(ctx context.Context, table *schema.Table, rows 
 
 	cols := table.ColumnNames()
 
+	maxLengths := make(map[string]int)
+	for _, col := range table.Columns {
+		if col.MaxLength > 0 {
+			maxLengths[col.Name] = col.MaxLength
+		}
+	}
+
 	for i := 0; i < len(rows); i += w.batchSz {
 		end := i + w.batchSz
 		if end > len(rows) {
@@ -80,7 +88,11 @@ func (w *MysqlWriter) WriteTable(ctx context.Context, table *schema.Table, rows 
 				if k > 0 {
 					buf.WriteString(", ")
 				}
-				writeMySQLValue(&buf, row[col])
+				val := row[col]
+				if ml, ok := maxLengths[col]; ok {
+					val = truncateStringValue(val, ml)
+				}
+				writeMySQLValue(&buf, val)
 			}
 			buf.WriteByte(')')
 		}
@@ -98,7 +110,13 @@ func (w *MysqlWriter) Close() error {
 }
 
 func (w *MysqlWriter) Truncate(ctx context.Context, table *schema.Table) error {
-	_, err := w.db.ExecContext(ctx, "TRUNCATE TABLE "+table.Name)
+	_, err := w.db.ExecContext(ctx, "SET FOREIGN_KEY_CHECKS=0")
+	if err != nil {
+		return fmt.Errorf("disable FK checks: %w", err)
+	}
+	defer w.db.ExecContext(ctx, "SET FOREIGN_KEY_CHECKS=1")
+
+	_, err = w.db.ExecContext(ctx, "TRUNCATE TABLE "+table.Name)
 	return err
 }
 
@@ -132,7 +150,13 @@ func writeMySQLValue(buf *strings.Builder, v any) {
 			buf.WriteString("0")
 		}
 	case string:
-		writeMySQLString(buf, val)
+		if isISODateTime(val) {
+			writeMySQLString(buf, strings.ReplaceAll(strings.TrimSuffix(val, "Z"), "T", " "))
+		} else {
+			writeMySQLString(buf, val)
+		}
+	case time.Time:
+		writeMySQLString(buf, val.Format("2006-01-02 15:04:05"))
 	case []byte:
 		buf.WriteString("X'")
 		for _, b := range val {
@@ -156,4 +180,18 @@ func writeMySQLString(buf *strings.Builder, str string) {
 		}
 	}
 	buf.WriteByte('\'')
+}
+
+func isISODateTime(s string) bool {
+	return len(s) >= 19 && s[4] == '-' && s[7] == '-' && s[10] == 'T' && s[13] == ':'
+}
+
+func truncateStringValue(v any, maxLen int) any {
+	if v == nil {
+		return v
+	}
+	if s, ok := v.(string); ok && len(s) > maxLen {
+		return s[:maxLen]
+	}
+	return v
 }
