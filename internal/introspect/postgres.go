@@ -96,11 +96,23 @@ func (pi *PostgresIntrospector) extractTables(ctx context.Context) ([]schema.Tab
 			}
 		}
 
+		constraints, uniqueCols, err := pi.extractConstraints(ctx, pi.schemas[0], tableName)
+		if err != nil {
+			return nil, fmt.Errorf("extract constraints for %s: %w", tableName, err)
+		}
+
+		for i := range columns {
+			if uniqueCols[columns[i].Name] {
+				columns[i].Unique = true
+			}
+		}
+
 		tables = append(tables, schema.Table{
 			Name:        tableName,
 			SchemaName:  pi.schemas[0],
 			Columns:     columns,
 			ForeignKeys: fks,
+			Constraints: constraints,
 		})
 	}
 
@@ -233,6 +245,90 @@ func (pi *PostgresIntrospector) extractForeignKeys(ctx context.Context, schemaNa
 	}
 
 	return fks, rows.Err()
+}
+
+func (pi *PostgresIntrospector) extractConstraints(ctx context.Context, schemaName, tableName string) ([]schema.Constraint, map[string]bool, error) {
+	uniqueCols := make(map[string]bool)
+	var constraints []schema.Constraint
+
+	rows, err := pi.pool.Query(ctx, `
+		SELECT
+			tc.constraint_type,
+			tc.constraint_name,
+			COALESCE(kcu.column_name, '') AS column_name,
+			COALESCE(cc.check_clause, '') AS check_clause
+		FROM information_schema.table_constraints tc
+		LEFT JOIN information_schema.key_column_usage kcu
+			ON tc.constraint_name = kcu.constraint_name
+			AND tc.table_schema = kcu.table_schema
+		LEFT JOIN information_schema.check_constraints cc
+			ON cc.constraint_name = tc.constraint_name
+			AND cc.constraint_schema = tc.table_schema
+		WHERE tc.table_schema = $1
+			AND tc.table_name = $2
+			AND tc.constraint_type IN ('UNIQUE', 'CHECK', 'PRIMARY KEY')
+		ORDER BY tc.constraint_name, kcu.ordinal_position
+	`, schemaName, tableName)
+	if err != nil {
+		return nil, nil, fmt.Errorf("query constraints: %w", err)
+	}
+	defer rows.Close()
+
+	currentConstraint := ""
+	var currentCols []string
+	var currentType schema.ConstraintType
+	var currentName string
+	var currentCheck string
+
+	flushConstraint := func() {
+		if currentConstraint != "" {
+			c := schema.Constraint{
+				Type:    currentType,
+				Name:    currentName,
+				Columns: currentCols,
+			}
+			if currentType == schema.ConstraintCheck {
+				c.Expression = currentCheck
+			}
+			constraints = append(constraints, c)
+
+			if currentType == schema.ConstraintUnique {
+				for _, col := range currentCols {
+					uniqueCols[col] = true
+				}
+			}
+		}
+	}
+
+	for rows.Next() {
+		var constraintType, constraintName, columnName, checkClause string
+		if err := rows.Scan(&constraintType, &constraintName, &columnName, &checkClause); err != nil {
+			return nil, nil, fmt.Errorf("scan constraint row: %w", err)
+		}
+
+		if constraintName != currentConstraint {
+			flushConstraint()
+			currentConstraint = constraintName
+			currentCols = nil
+			currentName = constraintName
+			currentCheck = checkClause
+			switch constraintType {
+			case "UNIQUE":
+				currentType = schema.ConstraintUnique
+			case "CHECK":
+				currentType = schema.ConstraintCheck
+			case "PRIMARY KEY":
+				currentType = schema.ConstraintPrimaryKey
+			}
+		}
+
+		if columnName != "" {
+			currentCols = append(currentCols, columnName)
+		}
+	}
+	flushConstraint()
+
+	return constraints, uniqueCols, rows.Err()
 }
 
 func (pi *PostgresIntrospector) Close() {
