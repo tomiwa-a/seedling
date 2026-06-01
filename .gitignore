@@ -33,3 +33,4 @@ seed.sql
 *.jsonl
 *.parquet
 schema.yaml
+schema.json

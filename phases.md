@@ -6,12 +6,12 @@
 
 **Goal:** Establish the Go module, CLI skeleton, core data types, and public interfaces. Nothing generates data yet.
 
-- [ ] Initialize Go module (`go mod init github.com/user/seedling`), set up project directory structure (`cmd/`, `pkg/`, `internal/`)
-- [ ] Define core data types: `Table`, `Column`, `ForeignKey`, `Constraint`, `Schema` structs
-- [ ] Define public interfaces: `Generator`, `Writer`, `Introspector`, `PlanBuilder`, `StreamGenerator`
-- [ ] Scaffold CLI entry point with Cobra (`cmd/seedling/main.go`) and stub commands: `introspect`, `generate`, `validate`, `watch`
-- [ ] Set up CI (Go lint, vet, test on push), README badges, contribution guidelines
-- [ ] Write unit tests for all core types (serialization, equality, validation)
+- [x] Initialize Go module (`go mod init github.com/tomiwa-a/seedling`), set up project directory structure (`cmd/`, `pkg/`, `internal/`)
+- [x] Define core data types: `Table`, `Column`, `ForeignKey`, `Constraint`, `Schema` structs
+- [x] Define public interfaces: `Generator`, `Writer`, `Introspector`, `PlanBuilder`, `StreamGenerator`
+- [x] Scaffold CLI entry point with Cobra (`cmd/seedling/main.go`) and stub commands: `introspect`, `generate`, `validate`, `watch`
+- [x] Set up CI (Go lint, vet, test on push), README badges, contribution guidelines
+- [x] Write unit tests for all core types (serialization, equality, validation)
 
 ---
 
@@ -19,13 +19,13 @@
 
 **Goal:** Read a live Postgres database and produce a structured `Schema` object with all tables, columns, types, FKs, constraints, and defaults.
 
-- [ ] Implement `pg_introspector.go` — connect via `pgx`, query `information_schema.tables` + `information_schema.columns`
-- [ ] Extract column type info: SQL type → Seedling type mapping (e.g., `varchar(255)` → `String`, `serial` → `Serial`)
-- [ ] Extract foreign keys from `information_schema.table_constraints` + `key_column_usage`
-- [ ] Extract constraints: `NOT NULL`, `UNIQUE`, `CHECK`, `DEFAULT` values, sequence ownership
-- [ ] Extract column comments (if any) as generator hints
-- [ ] Write `seedling introspect` CLI command with `--db` and `--output` flags
-- [ ] Output introspection result as YAML (`schema.yaml`) and JSON (`schema.json`)
+- [x] Implement `pg_introspector.go` — connect via `pgx`, query `information_schema.tables` + `information_schema.columns`
+- [x] Extract column type info: SQL type → Seedling type mapping (e.g., `varchar(255)` → `String`, `serial` → `Serial`)
+- [x] Extract foreign keys from `information_schema.table_constraints` + `key_column_usage`
+- [x] Extract constraints: `NOT NULL`, `UNIQUE`, `CHECK`, `DEFAULT` values, sequence ownership
+- [x] Extract column comments (if any) as generator hints
+- [x] Write `seedling introspect` CLI command with `--db` and `--output` flags
+- [x] Output introspection result as YAML (`schema.yaml`) and JSON (`schema.json`)
 
 ---
 
