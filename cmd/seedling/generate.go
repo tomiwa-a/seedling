@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"time"
@@ -13,6 +14,7 @@ import (
 	internalwriter "github.com/tomiwa-a/seedling/internal/writer"
 
 	"github.com/tomiwa-a/seedling/pkg/schema"
+	writerinterface "github.com/tomiwa-a/seedling/pkg/writer"
 )
 
 var generateCmd = &cobra.Command{
@@ -31,6 +33,9 @@ schema and optional generator overrides.`,
 		verbose, _ := cmd.Flags().GetBool("verbose")
 		batchSize, _ := cmd.Flags().GetInt("batch-size")
 		seed, _ := cmd.Flags().GetInt64("seed")
+		dbDSN, _ := cmd.Flags().GetString("db")
+		useCopy, _ := cmd.Flags().GetBool("copy")
+		truncate, _ := cmd.Flags().GetBool("truncate")
 
 		if seed == 0 {
 			seed = time.Now().UnixNano()
@@ -55,6 +60,10 @@ schema and optional generator overrides.`,
 			fmt.Printf("Plan: %d total rows across %d tables\n", plan.TotalCount, len(plan.Tables))
 			for _, tp := range plan.Tables {
 				fmt.Printf("  %s: %d rows\n", tp.Table.Name, tp.Count)
+			}
+			if plan.CircularGroup != nil {
+				fmt.Printf("Circular FKs detected: %d pass1 tables, %d pass2 tables\n",
+					len(plan.CircularGroup.Pass1Tables), len(plan.CircularGroup.Pass2Tables))
 			}
 			return nil
 		}
@@ -92,24 +101,71 @@ schema and optional generator overrides.`,
 			}
 		}
 
-		outFile, err := os.Create(output)
-		if err != nil {
-			return fmt.Errorf("create output: %w", err)
-		}
-		defer outFile.Close()
+		var w writerinterface.Writer
 
-		sw := internalwriter.NewSqlWriter(outFile, internalwriter.WithBatchSize(batchSize))
+		if dbDSN != "" {
+			if verbose {
+				fmt.Printf("Connecting to: %s\n", dbDSN)
+			}
+
+			var dbWriter writerinterface.Writer
+			if useCopy {
+				dbWriter, err = internalwriter.NewCopyWriter(ctx, dbDSN,
+					internalwriter.WithDbSchema(sch.Name),
+					internalwriter.WithDbBatchSize(batchSize))
+			} else {
+				dbWriter, err = internalwriter.NewDbWriter(ctx, dbDSN,
+					internalwriter.WithDbSchema(sch.Name),
+					internalwriter.WithDbBatchSize(batchSize))
+			}
+			if err != nil {
+				return fmt.Errorf("connect to database: %w", err)
+			}
+			defer dbWriter.Close()
+
+			if truncate {
+				if verbose {
+					fmt.Println("Truncating tables...")
+				}
+				for _, tp := range plan.Tables {
+					if truncatable, ok := dbWriter.(interface {
+						Truncate(context.Context, *schema.Table) error
+					}); ok {
+						if err := truncatable.Truncate(ctx, tp.Table); err != nil {
+							return fmt.Errorf("truncate %s: %w", tp.Table.Name, err)
+						}
+					}
+				}
+			}
+
+			w = dbWriter
+		} else {
+			outFile, err := os.Create(output)
+			if err != nil {
+				return fmt.Errorf("create output: %w", err)
+			}
+			defer outFile.Close()
+			w = internalwriter.NewSqlWriter(outFile, internalwriter.WithBatchSize(batchSize))
+		}
 
 		if verbose {
 			fmt.Printf("Generating %d rows across %d tables...\n", plan.TotalCount, len(plan.Tables))
 		}
 
-		if err := sg.Generate(ctx, plan, sw); err != nil {
+		start := time.Now()
+		if err := sg.Generate(ctx, plan, w); err != nil {
 			return fmt.Errorf("generate: %w", err)
 		}
+		elapsed := time.Since(start)
 
 		if verbose {
-			fmt.Printf("Output written to %s\n", output)
+			if dbDSN != "" {
+				fmt.Printf("Inserted %d rows in %s (%.0f rows/sec)\n",
+					plan.TotalCount, elapsed.Truncate(time.Millisecond),
+					float64(plan.TotalCount)/elapsed.Seconds())
+			} else {
+				fmt.Printf("Output written to %s (%s)\n", output, elapsed.Truncate(time.Millisecond))
+			}
 		}
 		return nil
 	},
@@ -150,6 +206,7 @@ func init() {
 	generateCmd.Flags().String("output", "seed.sql", "Output file path")
 	generateCmd.Flags().String("format", "sql", "Output format (sql, csv, jsonl, parquet)")
 	generateCmd.Flags().Int("batch-size", 1000, "Rows per batch")
+	generateCmd.Flags().String("db", "", "Database DSN for direct insert")
 	generateCmd.Flags().Bool("copy", false, "Use COPY protocol (Postgres only)")
 	generateCmd.Flags().Bool("truncate", false, "TRUNCATE tables before inserting")
 	generateCmd.Flags().String("generators", "", "Path to Go generator files")
