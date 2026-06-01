@@ -10,8 +10,8 @@ import (
 func TestBuildSingleTable(t *testing.T) {
 	s := &schema.Schema{
 		Name: "public",
-		Tables: []schema.Table{
-			{Name: "users", SchemaName: "public", Columns: []schema.Column{
+		Tables: []*schema.Table{
+			{Name: "users", SchemaName: "public", Columns: []*schema.Column{
 				{Name: "id", Type: schema.TypeSerial},
 			}},
 		},
@@ -37,20 +37,20 @@ func TestBuildSingleTable(t *testing.T) {
 func TestBuildParentChild(t *testing.T) {
 	s := &schema.Schema{
 		Name: "public",
-		Tables: []schema.Table{
+		Tables: []*schema.Table{
 			{
 				Name: "users", SchemaName: "public",
-				Columns: []schema.Column{
+				Columns: []*schema.Column{
 					{Name: "id", Type: schema.TypeSerial},
 				},
 			},
 			{
 				Name: "orders", SchemaName: "public",
-				Columns: []schema.Column{
+				Columns: []*schema.Column{
 					{Name: "id", Type: schema.TypeSerial},
 					{Name: "user_id", Type: schema.TypeInteger, FKRef: &schema.FKRef{Table: "users", Column: "id"}},
 				},
-				ForeignKeys: []schema.ForeignKey{
+				ForeignKeys: []*schema.ForeignKey{
 					{ColumnName: "user_id", RefTable: "users", RefColumn: "id"},
 				},
 			},
@@ -87,20 +87,20 @@ func TestBuildParentChild(t *testing.T) {
 func TestBuildDiamondDependency(t *testing.T) {
 	s := &schema.Schema{
 		Name: "public",
-		Tables: []schema.Table{
-			{Name: "a", Columns: []schema.Column{{Name: "id", Type: schema.TypeSerial}}},
-			{Name: "b", Columns: []schema.Column{
+		Tables: []*schema.Table{
+			{Name: "a", Columns: []*schema.Column{{Name: "id", Type: schema.TypeSerial}}},
+			{Name: "b", Columns: []*schema.Column{
 				{Name: "id", Type: schema.TypeSerial},
 				{Name: "a_id", FKRef: &schema.FKRef{Table: "a", Column: "id"}},
-			}, ForeignKeys: []schema.ForeignKey{{ColumnName: "a_id", RefTable: "a", RefColumn: "id"}}},
-			{Name: "c", Columns: []schema.Column{
+			}, ForeignKeys: []*schema.ForeignKey{{ColumnName: "a_id", RefTable: "a", RefColumn: "id"}}},
+			{Name: "c", Columns: []*schema.Column{
 				{Name: "id", Type: schema.TypeSerial},
 				{Name: "a_id", FKRef: &schema.FKRef{Table: "a", Column: "id"}},
-			}, ForeignKeys: []schema.ForeignKey{{ColumnName: "a_id", RefTable: "a", RefColumn: "id"}}},
-			{Name: "d", Columns: []schema.Column{
+			}, ForeignKeys: []*schema.ForeignKey{{ColumnName: "a_id", RefTable: "a", RefColumn: "id"}}},
+			{Name: "d", Columns: []*schema.Column{
 				{Name: "id", Type: schema.TypeSerial},
 				{Name: "b_id", FKRef: &schema.FKRef{Table: "b", Column: "id"}},
-			}, ForeignKeys: []schema.ForeignKey{{ColumnName: "b_id", RefTable: "b", RefColumn: "id"}}},
+			}, ForeignKeys: []*schema.ForeignKey{{ColumnName: "b_id", RefTable: "b", RefColumn: "id"}}},
 		},
 	}
 
@@ -122,10 +122,10 @@ func TestBuildDiamondDependency(t *testing.T) {
 func TestBuildNoForeignKeys(t *testing.T) {
 	s := &schema.Schema{
 		Name: "public",
-		Tables: []schema.Table{
-			{Name: "t1", Columns: []schema.Column{{Name: "id", Type: schema.TypeSerial}}},
-			{Name: "t2", Columns: []schema.Column{{Name: "id", Type: schema.TypeSerial}}},
-			{Name: "t3", Columns: []schema.Column{{Name: "id", Type: schema.TypeSerial}}},
+		Tables: []*schema.Table{
+			{Name: "t1", Columns: []*schema.Column{{Name: "id", Type: schema.TypeSerial}}},
+			{Name: "t2", Columns: []*schema.Column{{Name: "id", Type: schema.TypeSerial}}},
+			{Name: "t3", Columns: []*schema.Column{{Name: "id", Type: schema.TypeSerial}}},
 		},
 	}
 
@@ -149,8 +149,8 @@ func TestBuildNoForeignKeys(t *testing.T) {
 func TestBuildTotalCountNonZero(t *testing.T) {
 	s := &schema.Schema{
 		Name: "public",
-		Tables: []schema.Table{
-			{Name: "a", Columns: []schema.Column{{Name: "id", Type: schema.TypeSerial}}},
+		Tables: []*schema.Table{
+			{Name: "a", Columns: []*schema.Column{{Name: "id", Type: schema.TypeSerial}}},
 		},
 	}
 
@@ -168,9 +168,9 @@ func TestBuildTotalCountNonZero(t *testing.T) {
 func TestBuildTableNamesMatch(t *testing.T) {
 	s := &schema.Schema{
 		Name: "public",
-		Tables: []schema.Table{
-			{Name: "x", Columns: []schema.Column{{Name: "id", Type: schema.TypeSerial}}},
-			{Name: "y", Columns: []schema.Column{{Name: "id", Type: schema.TypeSerial}}},
+		Tables: []*schema.Table{
+			{Name: "x", Columns: []*schema.Column{{Name: "id", Type: schema.TypeSerial}}},
+			{Name: "y", Columns: []*schema.Column{{Name: "id", Type: schema.TypeSerial}}},
 		},
 	}
 
@@ -188,8 +188,8 @@ func TestBuildTableNamesMatch(t *testing.T) {
 
 func TestBuildPlanSeed(t *testing.T) {
 	s := &schema.Schema{
-		Tables: []schema.Table{
-			{Name: "t", Columns: []schema.Column{{Name: "id", Type: schema.TypeSerial}}},
+		Tables: []*schema.Table{
+			{Name: "t", Columns: []*schema.Column{{Name: "id", Type: schema.TypeSerial}}},
 		},
 	}
 

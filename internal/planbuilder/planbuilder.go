@@ -26,7 +26,7 @@ func New(rootCount int) *Builder {
 func (b *Builder) Build(ctx context.Context, s *schema.Schema, configs []generator.Config) (*plan.Plan, error) {
 	tableMap := make(map[string]*schema.Table)
 	for i := range s.Tables {
-		tableMap[s.Tables[i].Name] = &s.Tables[i]
+		tableMap[s.Tables[i].Name] = s.Tables[i]
 	}
 
 	deps := buildDependencyGraph(s.Tables)
@@ -39,15 +39,15 @@ func (b *Builder) Build(ctx context.Context, s *schema.Schema, configs []generat
 	uniqueFKs := buildUniqueFKMap(s.Tables)
 	counts := computeCounts(ordered, deps, uniqueFKs, b.rootCount)
 
-	var tablePlans []plan.TablePlan
+	var tablePlans []*plan.TablePlan
 	var totalCount int64
 
 	for _, tbl := range ordered {
 		count := counts[tbl.Name]
 		totalCount += int64(count)
 
-		tablePlans = append(tablePlans, plan.TablePlan{
-			Table: *tbl,
+		tablePlans = append(tablePlans, &plan.TablePlan{
+			Table: tbl,
 			Count: count,
 		})
 	}
@@ -61,7 +61,7 @@ func (b *Builder) Build(ctx context.Context, s *schema.Schema, configs []generat
 	}, nil
 }
 
-func buildDependencyGraph(tables []schema.Table) map[string][]string {
+func buildDependencyGraph(tables []*schema.Table) map[string][]string {
 	tableSet := make(map[string]bool)
 	for _, t := range tables {
 		tableSet[t.Name] = true
@@ -78,10 +78,10 @@ func buildDependencyGraph(tables []schema.Table) map[string][]string {
 	return deps
 }
 
-func topologicalSort(tables []schema.Table, deps map[string][]string) ([]*schema.Table, error) {
+func topologicalSort(tables []*schema.Table, deps map[string][]string) ([]*schema.Table, error) {
 	tableMap := make(map[string]*schema.Table)
 	for i := range tables {
-		tableMap[tables[i].Name] = &tables[i]
+		tableMap[tables[i].Name] = tables[i]
 	}
 
 	inDegree := make(map[string]int)
@@ -122,7 +122,7 @@ func topologicalSort(tables []schema.Table, deps map[string][]string) ([]*schema
 	return sorted, nil
 }
 
-func buildUniqueFKMap(tables []schema.Table) map[string]struct{} {
+func buildUniqueFKMap(tables []*schema.Table) map[string]struct{} {
 	uniqueFK := make(map[string]struct{})
 	for _, t := range tables {
 		fkCols := make(map[string]bool)
