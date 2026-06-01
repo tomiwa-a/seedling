@@ -2,6 +2,7 @@ package generator
 
 import (
 	"context"
+	"math/rand"
 	"strings"
 	"testing"
 )
@@ -27,7 +28,7 @@ func TestUsernameGenerator(t *testing.T) {
 }
 
 func TestULIDGenerator(t *testing.T) {
-	g := &ULIDGenerator{}
+	g := &ULIDGenerator{rnd: rand.New(rand.NewSource(42))}
 	ctx := context.Background()
 	row := testRow{}
 
@@ -82,7 +83,7 @@ func TestStringGeneratorDefaultLength(t *testing.T) {
 
 func TestEnumPickerAllValuesSeen(t *testing.T) {
 	values := []string{"A", "B", "C"}
-	g := &EnumPicker{Values: values}
+	g := &EnumPicker{Values: values, rnd: rand.New(rand.NewSource(42))}
 	ctx := context.Background()
 	row := testRow{}
 

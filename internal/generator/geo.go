@@ -2,70 +2,137 @@ package generator
 
 import (
 	"context"
-	"crypto/rand"
 	"fmt"
-	"math/big"
+	"math/rand"
 
 	gen "github.com/tomiwa-a/seedling/pkg/generator"
 )
 
-type CityGenerator struct{}
+type CityGenerator struct {
+	rnd *rand.Rand
+}
+
+func (g *CityGenerator) SetRand(rnd *rand.Rand) { g.rnd = rnd }
 
 func (g *CityGenerator) Generate(ctx context.Context, row gen.RowContext) (any, error) {
-	return randomPick(cities), nil
+	rnd := g.rnd
+	if rnd == nil {
+		rnd = rand.New(rand.NewSource(0))
+	}
+	return randomPick(rnd, cities), nil
 }
 
-type CountryGenerator struct{}
+type CountryGenerator struct {
+	rnd *rand.Rand
+}
+
+func (g *CountryGenerator) SetRand(rnd *rand.Rand) { g.rnd = rnd }
 
 func (g *CountryGenerator) Generate(ctx context.Context, row gen.RowContext) (any, error) {
-	return randomPick(countries), nil
+	rnd := g.rnd
+	if rnd == nil {
+		rnd = rand.New(rand.NewSource(0))
+	}
+	return randomPick(rnd, countries), nil
 }
 
-type CountryCodeGenerator struct{}
+type CountryCodeGenerator struct {
+	rnd *rand.Rand
+}
+
+func (g *CountryCodeGenerator) SetRand(rnd *rand.Rand) { g.rnd = rnd }
 
 func (g *CountryCodeGenerator) Generate(ctx context.Context, row gen.RowContext) (any, error) {
-	return randomPick(countryCodes), nil
+	rnd := g.rnd
+	if rnd == nil {
+		rnd = rand.New(rand.NewSource(0))
+	}
+	return randomPick(rnd, countryCodes), nil
 }
 
-type AddressGenerator struct{}
+type AddressGenerator struct {
+	rnd *rand.Rand
+}
+
+func (g *AddressGenerator) SetRand(rnd *rand.Rand) { g.rnd = rnd }
 
 func (g *AddressGenerator) Generate(ctx context.Context, row gen.RowContext) (any, error) {
-	n, _ := rand.Int(rand.Reader, big.NewInt(999))
-	number := n.Int64() + 1
-	return fmt.Sprintf("%d %s %s", number, randomPick(streetNames), randomPick(streetTypes)), nil
+	rnd := g.rnd
+	if rnd == nil {
+		rnd = rand.New(rand.NewSource(0))
+	}
+	number := rnd.Int63n(999) + 1
+	return fmt.Sprintf("%d %s %s", number, randomPick(rnd, streetNames), randomPick(rnd, streetTypes)), nil
 }
 
-type LatitudeGenerator struct{}
+type LatitudeGenerator struct {
+	rnd *rand.Rand
+}
+
+func (g *LatitudeGenerator) SetRand(rnd *rand.Rand) { g.rnd = rnd }
 
 func (g *LatitudeGenerator) Generate(ctx context.Context, row gen.RowContext) (any, error) {
-	n, _ := rand.Int(rand.Reader, big.NewInt(1800000))
-	lat := float64(n.Int64()-900000) / 10000.0
+	rnd := g.rnd
+	if rnd == nil {
+		rnd = rand.New(rand.NewSource(0))
+	}
+	lat := float64(rnd.Int63n(1800000)-900000) / 10000.0
 	return fmt.Sprintf("%.6f", lat), nil
 }
 
-type LongitudeGenerator struct{}
+type LongitudeGenerator struct {
+	rnd *rand.Rand
+}
+
+func (g *LongitudeGenerator) SetRand(rnd *rand.Rand) { g.rnd = rnd }
 
 func (g *LongitudeGenerator) Generate(ctx context.Context, row gen.RowContext) (any, error) {
-	n, _ := rand.Int(rand.Reader, big.NewInt(3600000))
-	lon := float64(n.Int64()-1800000) / 10000.0
+	rnd := g.rnd
+	if rnd == nil {
+		rnd = rand.New(rand.NewSource(0))
+	}
+	lon := float64(rnd.Int63n(3600000)-1800000) / 10000.0
 	return fmt.Sprintf("%.6f", lon), nil
 }
 
-type PostalCodeGenerator struct{}
+type PostalCodeGenerator struct {
+	rnd *rand.Rand
+}
+
+func (g *PostalCodeGenerator) SetRand(rnd *rand.Rand) { g.rnd = rnd }
 
 func (g *PostalCodeGenerator) Generate(ctx context.Context, row gen.RowContext) (any, error) {
-	code, _ := rand.Int(rand.Reader, big.NewInt(100000))
-	return fmt.Sprintf("%05d", code.Int64()), nil
+	rnd := g.rnd
+	if rnd == nil {
+		rnd = rand.New(rand.NewSource(0))
+	}
+	return fmt.Sprintf("%05d", rnd.Int63n(100000)), nil
 }
 
-type CompanyGenerator struct{}
+type CompanyGenerator struct {
+	rnd *rand.Rand
+}
+
+func (g *CompanyGenerator) SetRand(rnd *rand.Rand) { g.rnd = rnd }
 
 func (g *CompanyGenerator) Generate(ctx context.Context, row gen.RowContext) (any, error) {
-	return randomPick(companies), nil
+	rnd := g.rnd
+	if rnd == nil {
+		rnd = rand.New(rand.NewSource(0))
+	}
+	return randomPick(rnd, companies), nil
 }
 
-type JobTitleGenerator struct{}
+type JobTitleGenerator struct {
+	rnd *rand.Rand
+}
+
+func (g *JobTitleGenerator) SetRand(rnd *rand.Rand) { g.rnd = rnd }
 
 func (g *JobTitleGenerator) Generate(ctx context.Context, row gen.RowContext) (any, error) {
-	return randomPick(jobTitles), nil
+	rnd := g.rnd
+	if rnd == nil {
+		rnd = rand.New(rand.NewSource(0))
+	}
+	return randomPick(rnd, jobTitles), nil
 }

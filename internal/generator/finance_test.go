@@ -2,11 +2,12 @@ package generator
 
 import (
 	"context"
+	"math/rand"
 	"testing"
 )
 
 func TestCurrencyGenerator(t *testing.T) {
-	g := &CurrencyGenerator{}
+	g := &CurrencyGenerator{rnd: rand.New(rand.NewSource(42))}
 	ctx := context.Background()
 	row := testRow{}
 

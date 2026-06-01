@@ -2,9 +2,8 @@ package generator
 
 import (
 	"context"
-	"crypto/rand"
 	"fmt"
-	"math/big"
+	"math/rand"
 	"time"
 
 	gen "github.com/tomiwa-a/seedling/pkg/generator"
@@ -13,32 +12,47 @@ import (
 type DateGenerator struct {
 	MinYear int
 	MaxYear int
+	rnd     *rand.Rand
 }
 
+func (g *DateGenerator) SetRand(rnd *rand.Rand) { g.rnd = rnd }
+
 func (g *DateGenerator) Generate(ctx context.Context, row gen.RowContext) (any, error) {
+	rnd := g.rnd
+	if rnd == nil {
+		rnd = rand.New(rand.NewSource(0))
+	}
 	yearDelta := g.MaxYear - g.MinYear
-	y, _ := rand.Int(rand.Reader, big.NewInt(int64(yearDelta+1)))
-	m, _ := rand.Int(rand.Reader, big.NewInt(12))
-	d, _ := rand.Int(rand.Reader, big.NewInt(28))
+	y := rnd.Intn(yearDelta + 1)
+	m := rnd.Intn(12)
+	d := rnd.Intn(28)
 	return fmt.Sprintf("%04d-%02d-%02d",
-		g.MinYear+int(y.Int64()),
-		m.Int64()+1,
-		d.Int64()+1,
+		g.MinYear+y,
+		m+1,
+		d+1,
 	), nil
 }
 
-type TimestampGenerator struct{}
+type TimestampGenerator struct {
+	rnd *rand.Rand
+}
+
+func (g *TimestampGenerator) SetRand(rnd *rand.Rand) { g.rnd = rnd }
 
 func (g *TimestampGenerator) Generate(ctx context.Context, row gen.RowContext) (any, error) {
-	y, _ := rand.Int(rand.Reader, big.NewInt(3))
-	m, _ := rand.Int(rand.Reader, big.NewInt(12))
-	d, _ := rand.Int(rand.Reader, big.NewInt(28))
-	h, _ := rand.Int(rand.Reader, big.NewInt(24))
-	mi, _ := rand.Int(rand.Reader, big.NewInt(60))
-	s, _ := rand.Int(rand.Reader, big.NewInt(60))
+	rnd := g.rnd
+	if rnd == nil {
+		rnd = rand.New(rand.NewSource(0))
+	}
+	y := rnd.Intn(3)
+	m := rnd.Intn(12)
+	d := rnd.Intn(28)
+	h := rnd.Intn(24)
+	mi := rnd.Intn(60)
+	s := rnd.Intn(60)
 	return fmt.Sprintf("%04d-%02d-%02dT%02d:%02d:%02dZ",
-		2024+int(y.Int64()), m.Int64()+1, d.Int64()+1,
-		h.Int64(), mi.Int64(), s.Int64(),
+		2024+y, m+1, d+1,
+		h, mi, s,
 	), nil
 }
 
@@ -50,29 +64,43 @@ func (g *NowGenerator) Generate(ctx context.Context, row gen.RowContext) (any, e
 
 type TimeAgoGenerator struct {
 	MaxDays int
+	rnd     *rand.Rand
 }
 
+func (g *TimeAgoGenerator) SetRand(rnd *rand.Rand) { g.rnd = rnd }
+
 func (g *TimeAgoGenerator) Generate(ctx context.Context, row gen.RowContext) (any, error) {
+	rnd := g.rnd
+	if rnd == nil {
+		rnd = rand.New(rand.NewSource(0))
+	}
 	maxDays := g.MaxDays
 	if maxDays <= 0 {
 		maxDays = 365
 	}
-	daysAgo, _ := rand.Int(rand.Reader, big.NewInt(int64(maxDays)))
-	t := time.Now().UTC().AddDate(0, 0, -int(daysAgo.Int64()))
+	daysAgo := rnd.Intn(maxDays)
+	t := time.Now().UTC().AddDate(0, 0, -daysAgo)
 	return t.Format("2006-01-02T15:04:05Z"), nil
 }
 
 type BusinessDaysGenerator struct {
 	MinYear int
 	MaxYear int
+	rnd     *rand.Rand
 }
 
+func (g *BusinessDaysGenerator) SetRand(rnd *rand.Rand) { g.rnd = rnd }
+
 func (g *BusinessDaysGenerator) Generate(ctx context.Context, row gen.RowContext) (any, error) {
+	rnd := g.rnd
+	if rnd == nil {
+		rnd = rand.New(rand.NewSource(0))
+	}
 	yearDelta := g.MaxYear - g.MinYear
-	y, _ := rand.Int(rand.Reader, big.NewInt(int64(yearDelta+1)))
-	m, _ := rand.Int(rand.Reader, big.NewInt(12))
-	d, _ := rand.Int(rand.Reader, big.NewInt(28))
-	t := time.Date(g.MinYear+int(y.Int64()), time.Month(m.Int64()+1), int(d.Int64()+1), 0, 0, 0, 0, time.UTC)
+	y := rnd.Intn(yearDelta + 1)
+	m := rnd.Intn(12)
+	d := rnd.Intn(28)
+	t := time.Date(g.MinYear+y, time.Month(m+1), d+1, 0, 0, 0, 0, time.UTC)
 	for t.Weekday() == time.Saturday || t.Weekday() == time.Sunday {
 		t = t.AddDate(0, 0, 1)
 	}

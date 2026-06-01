@@ -2,6 +2,7 @@ package generator
 
 import (
 	"context"
+	"math/rand"
 	"strings"
 	"testing"
 
@@ -132,7 +133,7 @@ func TestPhoneGenerator(t *testing.T) {
 }
 
 func TestBoolGenerator(t *testing.T) {
-	g := &BoolGenerator{}
+	g := &BoolGenerator{rnd: rand.New(rand.NewSource(42))}
 	ctx := context.Background()
 	row := testRow{}
 
@@ -172,7 +173,7 @@ func TestUUIDGenerator(t *testing.T) {
 
 func TestEnumPicker(t *testing.T) {
 	values := []string{"ACTIVE", "INACTIVE", "PENDING"}
-	g := &EnumPicker{Values: values}
+	g := &EnumPicker{Values: values, rnd: rand.New(rand.NewSource(42))}
 	ctx := context.Background()
 	row := testRow{}
 
@@ -385,7 +386,7 @@ func TestResolveGenerators(t *testing.T) {
 		"name":  schema.HintName,
 	}
 
-	gens, err := ResolveGenerators(columns, hints, pool)
+	gens, err := ResolveGenerators(columns, hints, pool, 42)
 	if err != nil {
 		t.Fatal(err)
 	}

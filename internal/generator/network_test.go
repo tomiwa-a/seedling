@@ -2,6 +2,7 @@ package generator
 
 import (
 	"context"
+	"math/rand"
 	"net"
 	"strings"
 	"testing"
@@ -68,7 +69,7 @@ func TestMACGenerator(t *testing.T) {
 }
 
 func TestUserAgentGenerator(t *testing.T) {
-	g := &UserAgentGenerator{}
+	g := &UserAgentGenerator{rnd: rand.New(rand.NewSource(42))}
 	ctx := context.Background()
 	row := testRow{}
 

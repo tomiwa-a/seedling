@@ -2,41 +2,71 @@ package generator
 
 import (
 	"context"
-	"crypto/rand"
 	"fmt"
+	"math/rand"
 
 	gen "github.com/tomiwa-a/seedling/pkg/generator"
 )
 
-type IPv4Generator struct{}
+type IPv4Generator struct {
+	rnd *rand.Rand
+}
+
+func (g *IPv4Generator) SetRand(rnd *rand.Rand) { g.rnd = rnd }
 
 func (g *IPv4Generator) Generate(ctx context.Context, row gen.RowContext) (any, error) {
-	b := make([]byte, 4)
-	rand.Read(b)
-	return fmt.Sprintf("%d.%d.%d.%d", b[0], b[1], b[2], b[3]), nil
+	rnd := g.rnd
+	if rnd == nil {
+		rnd = rand.New(rand.NewSource(0))
+	}
+	return fmt.Sprintf("%d.%d.%d.%d",
+		rnd.Intn(256), rnd.Intn(256), rnd.Intn(256), rnd.Intn(256)), nil
 }
 
-type IPv6Generator struct{}
+type IPv6Generator struct {
+	rnd *rand.Rand
+}
+
+func (g *IPv6Generator) SetRand(rnd *rand.Rand) { g.rnd = rnd }
 
 func (g *IPv6Generator) Generate(ctx context.Context, row gen.RowContext) (any, error) {
-	b := make([]byte, 16)
-	rand.Read(b)
+	rnd := g.rnd
+	if rnd == nil {
+		rnd = rand.New(rand.NewSource(0))
+	}
 	return fmt.Sprintf("%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x",
-		b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7],
-		b[8], b[9], b[10], b[11], b[12], b[13], b[14], b[15]), nil
+		rnd.Intn(256), rnd.Intn(256), rnd.Intn(256), rnd.Intn(256),
+		rnd.Intn(256), rnd.Intn(256), rnd.Intn(256), rnd.Intn(256),
+		rnd.Intn(256), rnd.Intn(256), rnd.Intn(256), rnd.Intn(256),
+		rnd.Intn(256), rnd.Intn(256), rnd.Intn(256), rnd.Intn(256)), nil
 }
 
-type MACGenerator struct{}
+type MACGenerator struct {
+	rnd *rand.Rand
+}
+
+func (g *MACGenerator) SetRand(rnd *rand.Rand) { g.rnd = rnd }
 
 func (g *MACGenerator) Generate(ctx context.Context, row gen.RowContext) (any, error) {
-	b := make([]byte, 6)
-	rand.Read(b)
+	rnd := g.rnd
+	if rnd == nil {
+		rnd = rand.New(rand.NewSource(0))
+	}
 	return fmt.Sprintf("%02x:%02x:%02x:%02x:%02x:%02x",
-		b[0], b[1], b[2], b[3], b[4], b[5]), nil
+		rnd.Intn(256), rnd.Intn(256), rnd.Intn(256),
+		rnd.Intn(256), rnd.Intn(256), rnd.Intn(256)), nil
 }
 
-type UserAgentGenerator struct{}
+type UserAgentGenerator struct {
+	rnd *rand.Rand
+}
+
+func (g *UserAgentGenerator) SetRand(rnd *rand.Rand) { g.rnd = rnd }
 
 func (g *UserAgentGenerator) Generate(ctx context.Context, row gen.RowContext) (any, error) {
-	return randomPick(userAgents), nil
+	rnd := g.rnd
+	if rnd == nil {
+		rnd = rand.New(rand.NewSource(0))
+	}
+	return randomPick(rnd, userAgents), nil
 }

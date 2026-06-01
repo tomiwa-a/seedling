@@ -15,6 +15,7 @@ type Generator struct {
 	pool    *genlib.FKPool
 	tracker *genlib.UniqueTracker
 	hints   map[string]map[string]schema.GeneratorHint
+	seed    uint64
 }
 
 func New() *Generator {
@@ -22,6 +23,16 @@ func New() *Generator {
 		pool:    genlib.NewFKPool(),
 		tracker: genlib.NewUniqueTracker(),
 		hints:   make(map[string]map[string]schema.GeneratorHint),
+		seed:    0,
+	}
+}
+
+func (g *Generator) SetSeed(seed uint64) {
+	g.seed = seed
+	if seed != 0 {
+		deriver := genlib.NewSeedDeriver(seed)
+		rnd := genlib.NewSeededRand(deriver.TableSeed("_pool"))
+		g.pool.SetRand(rnd)
 	}
 }
 
@@ -130,7 +141,9 @@ func (g *Generator) resolveGenerators(tbl *schema.Table) (map[string]generator.G
 	if tableHints == nil {
 		tableHints = make(map[string]schema.GeneratorHint)
 	}
-	return genlib.ResolveGenerators(tbl.Columns, tableHints, g.pool)
+	deriver := genlib.NewSeedDeriver(g.seed)
+	tableSeed := deriver.TableSeed(tbl.Name)
+	return genlib.ResolveGenerators(tbl.Columns, tableHints, g.pool, tableSeed)
 }
 
 func findPKColumns(tbl *schema.Table) []string {

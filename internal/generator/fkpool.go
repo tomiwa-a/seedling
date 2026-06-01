@@ -1,9 +1,8 @@
 package generator
 
 import (
-	"crypto/rand"
 	"fmt"
-	"math/big"
+	"math/rand"
 	"sync"
 )
 
@@ -11,13 +10,21 @@ type FKPool struct {
 	mu       sync.RWMutex
 	pools    map[string][]any
 	consumed map[string]map[any]bool
+	rnd      *rand.Rand
 }
 
 func NewFKPool() *FKPool {
 	return &FKPool{
 		pools:    make(map[string][]any),
 		consumed: make(map[string]map[any]bool),
+		rnd:      rand.New(rand.NewSource(0)),
 	}
+}
+
+func (p *FKPool) SetRand(rnd *rand.Rand) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.rnd = rnd
 }
 
 func (p *FKPool) Add(table string, pk any) {
@@ -35,11 +42,7 @@ func (p *FKPool) Pick(table string) (any, error) {
 		return nil, fmt.Errorf("fkpool: no rows available for table %q", table)
 	}
 
-	n, err := rand.Int(rand.Reader, big.NewInt(int64(len(pool))))
-	if err != nil {
-		return nil, err
-	}
-	return pool[n.Int64()], nil
+	return pool[p.rnd.Int63n(int64(len(pool)))], nil
 }
 
 func (p *FKPool) Consume(table string, consumerKey string) (any, error) {
@@ -61,8 +64,7 @@ func (p *FKPool) Consume(table string, consumerKey string) (any, error) {
 		return nil, fmt.Errorf("fkpool: all rows for table %q already consumed by %q", table, consumerKey)
 	}
 
-	shuffle, _ := rand.Int(rand.Reader, big.NewInt(int64(len(pool))))
-	start := shuffle.Int64()
+	start := p.rnd.Int63n(int64(len(pool)))
 	for i := range pool {
 		idx := (start + int64(i)) % int64(len(pool))
 		val := pool[idx]

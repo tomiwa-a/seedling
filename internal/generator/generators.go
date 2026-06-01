@@ -2,30 +2,26 @@ package generator
 
 import (
 	"context"
-	"crypto/rand"
 	"fmt"
-	"math/big"
+	"math/rand"
 
 	gen "github.com/tomiwa-a/seedling/pkg/generator"
 	"github.com/tomiwa-a/seedling/pkg/schema"
 )
 
-func randomPick(pool []string) string {
-	idx, _ := rand.Int(rand.Reader, big.NewInt(int64(len(pool))))
-	return pool[idx.Int64()]
+func randomPick(rnd *rand.Rand, pool []string) string {
+	return pool[rnd.Int63n(int64(len(pool)))]
 }
 
-func randomPickWithDefault(custom, fallback []string) string {
+func randomPickWithDefault(rnd *rand.Rand, custom, fallback []string) string {
 	if len(custom) > 0 {
-		return randomPick(custom)
+		return randomPick(rnd, custom)
 	}
-	return randomPick(fallback)
+	return randomPick(rnd, fallback)
 }
 
-func randomInt(min, max int64) int64 {
-	delta := max - min + 1
-	n, _ := rand.Int(rand.Reader, big.NewInt(delta))
-	return min + n.Int64()
+func randomInt(rnd *rand.Rand, min, max int64) int64 {
+	return min + rnd.Int63n(max-min+1)
 }
 
 func newUUID() string {
@@ -118,7 +114,16 @@ func ResolveGenerator(col *schema.Column, hint schema.GeneratorHint, pool *FKPoo
 	}
 }
 
-func ResolveGenerators(columns []*schema.Column, hints map[string]schema.GeneratorHint, pool *FKPool) (map[string]gen.Generator, error) {
+type Seeded interface {
+	SetRand(rnd *rand.Rand)
+}
+
+func NewSeededRand(seed uint64) *rand.Rand {
+	return rand.New(rand.NewSource(int64(seed)))
+}
+
+func ResolveGenerators(columns []*schema.Column, hints map[string]schema.GeneratorHint, pool *FKPool, seed uint64) (map[string]gen.Generator, error) {
+	deriver := NewSeedDeriver(seed)
 	gens := make(map[string]gen.Generator, len(columns))
 	for _, col := range columns {
 		hint := hints[col.Name]
@@ -128,6 +133,11 @@ func ResolveGenerators(columns []*schema.Column, hints map[string]schema.Generat
 		g, err := ResolveGenerator(col, hint, pool)
 		if err != nil {
 			return nil, fmt.Errorf("resolve generator for %s: %w", col.Name, err)
+		}
+		if seeded, ok := g.(Seeded); ok {
+			colSeed := deriver.ColumnSeed("", col.Name)
+			rnd := rand.New(rand.NewSource(int64(colSeed)))
+			seeded.SetRand(rnd)
 		}
 		gens[col.Name] = g
 	}

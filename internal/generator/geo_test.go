@@ -2,13 +2,14 @@ package generator
 
 import (
 	"context"
+	"math/rand"
 	"strconv"
 	"strings"
 	"testing"
 )
 
 func TestCountryCodeGenerator(t *testing.T) {
-	g := &CountryCodeGenerator{}
+	g := &CountryCodeGenerator{rnd: rand.New(rand.NewSource(42))}
 	ctx := context.Background()
 	row := testRow{}
 

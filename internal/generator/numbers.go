@@ -2,8 +2,7 @@ package generator
 
 import (
 	"context"
-	"crypto/rand"
-	"math/big"
+	"math/rand"
 
 	gen "github.com/tomiwa-a/seedling/pkg/generator"
 )
@@ -11,34 +10,51 @@ import (
 type RandomIntGenerator struct {
 	Min int64
 	Max int64
+	rnd *rand.Rand
 }
 
+func (g *RandomIntGenerator) SetRand(rnd *rand.Rand) { g.rnd = rnd }
+
 func (g *RandomIntGenerator) Generate(ctx context.Context, row gen.RowContext) (any, error) {
-	return randomInt(g.Min, g.Max), nil
+	rnd := g.rnd
+	if rnd == nil {
+		rnd = rand.New(rand.NewSource(0))
+	}
+	return randomInt(rnd, g.Min, g.Max), nil
 }
 
 type NumericGenerator struct {
 	Min int64
 	Max int64
+	rnd *rand.Rand
 }
 
+func (g *NumericGenerator) SetRand(rnd *rand.Rand) { g.rnd = rnd }
+
 func (g *NumericGenerator) Generate(ctx context.Context, row gen.RowContext) (any, error) {
-	cents := randomInt(g.Min, g.Max)
+	rnd := g.rnd
+	if rnd == nil {
+		rnd = rand.New(rand.NewSource(0))
+	}
+	cents := randomInt(rnd, g.Min, g.Max)
 	return float64(cents) / 100, nil
 }
 
 type FloatRangeGenerator struct {
 	Min float64
 	Max float64
+	rnd *rand.Rand
 }
 
+func (g *FloatRangeGenerator) SetRand(rnd *rand.Rand) { g.rnd = rnd }
+
 func (g *FloatRangeGenerator) Generate(ctx context.Context, row gen.RowContext) (any, error) {
-	n, err := rand.Int(rand.Reader, big.NewInt(1000000))
-	if err != nil {
-		return nil, err
+	rnd := g.rnd
+	if rnd == nil {
+		rnd = rand.New(rand.NewSource(0))
 	}
 	scale := g.Max - g.Min
-	return g.Min + (float64(n.Int64()) / 1000000.0 * scale), nil
+	return g.Min + (rnd.Float64() * scale), nil
 }
 
 type ConstantGenerator struct {
@@ -51,6 +67,7 @@ func (g *ConstantGenerator) Generate(ctx context.Context, row gen.RowContext) (a
 
 type WeightedChoiceGenerator struct {
 	Weights []WeightedChoice
+	rnd     *rand.Rand
 }
 
 type WeightedChoice struct {
@@ -58,13 +75,18 @@ type WeightedChoice struct {
 	Weight int
 }
 
+func (g *WeightedChoiceGenerator) SetRand(rnd *rand.Rand) { g.rnd = rnd }
+
 func (g *WeightedChoiceGenerator) Generate(ctx context.Context, row gen.RowContext) (any, error) {
+	rnd := g.rnd
+	if rnd == nil {
+		rnd = rand.New(rand.NewSource(0))
+	}
 	total := 0
 	for _, w := range g.Weights {
 		total += w.Weight
 	}
-	n, _ := rand.Int(rand.Reader, big.NewInt(int64(total)))
-	r := int(n.Int64())
+	r := rnd.Intn(total)
 	for _, w := range g.Weights {
 		r -= w.Weight
 		if r < 0 {
