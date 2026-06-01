@@ -250,7 +250,7 @@ func ResolveGenerator(col schema.Column, hint schema.GeneratorHint, pool *FKPool
 
 	switch col.Type {
 	case schema.TypeSerial, schema.TypeBigSerial:
-		return NewSerialGenerator(1), nil
+		return NewSerialGenerator(0), nil
 	case schema.TypeEnum:
 		if len(col.EnumValues) == 0 {
 			return &LoremGenerator{MinWords: 1, MaxWords: 3}, nil
