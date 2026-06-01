@@ -21,13 +21,13 @@ func TestStreamGeneratorFuncAdapter(t *testing.T) {
 	})
 
 	p := &plan.Plan{
-		Tables: []plan.TablePlan{
-			{Table: schema.Table{Name: "test"}, Count: 100},
+		Tables: []*plan.TablePlan{
+			{Table: &schema.Table{Name: "test"}, Count: 100},
 		},
 		TotalCount: 100,
 	}
 
-	w := writer.NewWriterFunc(func(ctx context.Context, table schema.Table, rows writer.Rows) error {
+	w := writer.NewWriterFunc(func(ctx context.Context, table *schema.Table, rows writer.Rows) error {
 		return nil
 	})
 

@@ -38,7 +38,7 @@ func (g *Generator) Generate(ctx context.Context, p *plan.Plan, w writer.Writer)
 	return w.Close()
 }
 
-func (g *Generator) generateTable(ctx context.Context, tp plan.TablePlan, w writer.Writer) error {
+func (g *Generator) generateTable(ctx context.Context, tp *plan.TablePlan, w writer.Writer) error {
 	gens, err := g.resolveGenerators(tp.Table)
 	if err != nil {
 		return err
@@ -118,7 +118,7 @@ func (g *Generator) generateTable(ctx context.Context, tp plan.TablePlan, w writ
 	return nil
 }
 
-func (g *Generator) resolveGenerators(tbl schema.Table) (map[string]generator.Generator, error) {
+func (g *Generator) resolveGenerators(tbl *schema.Table) (map[string]generator.Generator, error) {
 	tableHints := g.hints[tbl.Name]
 	if tableHints == nil {
 		tableHints = make(map[string]schema.GeneratorHint)
@@ -126,7 +126,7 @@ func (g *Generator) resolveGenerators(tbl schema.Table) (map[string]generator.Ge
 	return genlib.ResolveGenerators(tbl.Columns, tableHints, g.pool)
 }
 
-func findPKColumns(tbl schema.Table) []string {
+func findPKColumns(tbl *schema.Table) []string {
 	for _, c := range tbl.Constraints {
 		if c.Type == schema.ConstraintPrimaryKey {
 			return c.Columns

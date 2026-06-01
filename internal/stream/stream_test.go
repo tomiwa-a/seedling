@@ -19,7 +19,7 @@ func newCaptureWriter() *captureWriter {
 	return &captureWriter{tables: make(map[string]writer.Rows)}
 }
 
-func (w *captureWriter) WriteTable(ctx context.Context, table schema.Table, rows writer.Rows) error {
+func (w *captureWriter) WriteTable(ctx context.Context, table *schema.Table, rows writer.Rows) error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	w.tables[table.Name] = append(w.tables[table.Name], rows...)
@@ -31,14 +31,14 @@ func (w *captureWriter) Close() error { return nil }
 func TestGenerateSingleTable(t *testing.T) {
 	sg := New()
 	p := &plan.Plan{
-		Tables: []plan.TablePlan{
-			{Table: schema.Table{
+		Tables: []*plan.TablePlan{
+			{Table: &schema.Table{
 				Name: "users",
-				Columns: []schema.Column{
+				Columns: []*schema.Column{
 					{Name: "id", Type: schema.TypeSerial},
 					{Name: "email", Type: schema.TypeVarchar},
 				},
-				Constraints: []schema.Constraint{
+				Constraints: []*schema.Constraint{
 					{Type: schema.ConstraintPrimaryKey, Columns: []string{"id"}},
 				},
 			}, Count: 10},
@@ -71,27 +71,27 @@ func TestGenerateSingleTable(t *testing.T) {
 func TestGenerateWithFK(t *testing.T) {
 	sg := New()
 	p := &plan.Plan{
-		Tables: []plan.TablePlan{
-			{Table: schema.Table{
+		Tables: []*plan.TablePlan{
+			{Table: &schema.Table{
 				Name: "users",
-				Columns: []schema.Column{
+				Columns: []*schema.Column{
 					{Name: "id", Type: schema.TypeSerial},
 				},
-				Constraints: []schema.Constraint{
+				Constraints: []*schema.Constraint{
 					{Type: schema.ConstraintPrimaryKey, Columns: []string{"id"}},
 				},
 			}, Count: 5},
-			{Table: schema.Table{
+			{Table: &schema.Table{
 				Name: "orders",
-				Columns: []schema.Column{
+				Columns: []*schema.Column{
 					{Name: "id", Type: schema.TypeSerial},
 					{Name: "user_id", Type: schema.TypeInteger,
 						FKRef: &schema.FKRef{Table: "users", Column: "id"}},
 				},
-				ForeignKeys: []schema.ForeignKey{
+				ForeignKeys: []*schema.ForeignKey{
 					{ColumnName: "user_id", RefTable: "users", RefColumn: "id"},
 				},
-				Constraints: []schema.Constraint{
+				Constraints: []*schema.Constraint{
 					{Type: schema.ConstraintPrimaryKey, Columns: []string{"id"}},
 				},
 			}, Count: 20},
@@ -123,14 +123,14 @@ func TestGenerateWithFK(t *testing.T) {
 func TestGenerateUniqueColumn(t *testing.T) {
 	sg := New()
 	p := &plan.Plan{
-		Tables: []plan.TablePlan{
-			{Table: schema.Table{
+		Tables: []*plan.TablePlan{
+			{Table: &schema.Table{
 				Name: "users",
-				Columns: []schema.Column{
+				Columns: []*schema.Column{
 					{Name: "id", Type: schema.TypeSerial},
 					{Name: "email", Type: schema.TypeVarchar, Unique: true},
 				},
-				Constraints: []schema.Constraint{
+				Constraints: []*schema.Constraint{
 					{Type: schema.ConstraintPrimaryKey, Columns: []string{"id"}},
 				},
 			}, Count: 20},
@@ -160,10 +160,10 @@ func TestGenerateUniqueColumn(t *testing.T) {
 func TestGenerateEmptyTable(t *testing.T) {
 	sg := New()
 	p := &plan.Plan{
-		Tables: []plan.TablePlan{
-			{Table: schema.Table{
+		Tables: []*plan.TablePlan{
+			{Table: &schema.Table{
 				Name:    "empty",
-				Columns: []schema.Column{},
+				Columns: []*schema.Column{},
 			}, Count: 0},
 		},
 	}
@@ -179,13 +179,13 @@ func TestGenerateFKPoolPopulated(t *testing.T) {
 	sg := New()
 
 	p := &plan.Plan{
-		Tables: []plan.TablePlan{
-			{Table: schema.Table{
+		Tables: []*plan.TablePlan{
+			{Table: &schema.Table{
 				Name: "parents",
-				Columns: []schema.Column{
+				Columns: []*schema.Column{
 					{Name: "id", Type: schema.TypeSerial},
 				},
-				Constraints: []schema.Constraint{
+				Constraints: []*schema.Constraint{
 					{Type: schema.ConstraintPrimaryKey, Columns: []string{"id"}},
 				},
 			}, Count: 3},
@@ -210,14 +210,14 @@ func TestGenerateWithHints(t *testing.T) {
 	})
 
 	p := &plan.Plan{
-		Tables: []plan.TablePlan{
-			{Table: schema.Table{
+		Tables: []*plan.TablePlan{
+			{Table: &schema.Table{
 				Name: "users",
-				Columns: []schema.Column{
+				Columns: []*schema.Column{
 					{Name: "id", Type: schema.TypeSerial},
 					{Name: "email", Type: schema.TypeVarchar},
 				},
-				Constraints: []schema.Constraint{
+				Constraints: []*schema.Constraint{
 					{Type: schema.ConstraintPrimaryKey, Columns: []string{"id"}},
 				},
 			}, Count: 5},
