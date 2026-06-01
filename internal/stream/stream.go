@@ -3,7 +3,10 @@ package stream
 import (
 	"context"
 	"fmt"
+	"sort"
 	"time"
+
+	"golang.org/x/sync/errgroup"
 
 	genlib "github.com/tomiwa-a/seedling/internal/generator"
 	"github.com/tomiwa-a/seedling/pkg/generator"
@@ -18,6 +21,7 @@ type Generator struct {
 	hints      map[string]map[string]schema.GeneratorHint
 	seed       uint64
 	onProgress ProgressFunc
+	parallel   bool
 }
 
 func New() *Generator {
@@ -26,11 +30,16 @@ func New() *Generator {
 		tracker: genlib.NewUniqueTracker(),
 		hints:   make(map[string]map[string]schema.GeneratorHint),
 		seed:    0,
+		parallel: false,
 	}
 }
 
 func (g *Generator) SetProgress(fn ProgressFunc) {
 	g.onProgress = fn
+}
+
+func (g *Generator) SetParallel(p bool) {
+	g.parallel = p
 }
 
 func (g *Generator) SetSeed(seed uint64) {
@@ -58,12 +67,106 @@ func (g *Generator) Generate(ctx context.Context, p *plan.Plan, w writer.Writer)
 		return g.generateCircular(ctx, p, w)
 	}
 
+	if g.parallel && len(p.Tables) > 1 {
+		return g.generateParallel(ctx, p, w)
+	}
+
 	for _, tp := range p.Tables {
 		if err := g.generateTable(ctx, tp, w); err != nil {
 			return fmt.Errorf("generate %s: %w", tp.Table.Name, err)
 		}
 	}
 	return w.Close()
+}
+
+func (g *Generator) generateParallel(ctx context.Context, p *plan.Plan, w writer.Writer) error {
+	levels := computeLevels(p)
+
+	for _, level := range levels {
+		if len(level) == 1 {
+			if err := g.generateTable(ctx, level[0], w); err != nil {
+				return fmt.Errorf("generate %s: %w", level[0].Table.Name, err)
+			}
+			continue
+		}
+
+		eg, ctx := errgroup.WithContext(ctx)
+		for _, tp := range level {
+			tp := tp
+			eg.Go(func() error {
+				return g.generateTable(ctx, tp, w)
+			})
+		}
+		if err := eg.Wait(); err != nil {
+			return err
+		}
+	}
+
+	return w.Close()
+}
+
+func computeLevels(p *plan.Plan) [][]*plan.TablePlan {
+	tableSet := make(map[string]bool)
+	for _, tp := range p.Tables {
+		tableSet[tp.Table.Name] = true
+	}
+
+	deps := make(map[string][]string)
+	for _, tp := range p.Tables {
+		for _, fk := range tp.Table.ForeignKeys {
+			if tableSet[fk.RefTable] {
+				deps[tp.Table.Name] = append(deps[tp.Table.Name], fk.RefTable)
+			}
+		}
+	}
+
+	inDegree := make(map[string]int)
+	for _, tp := range p.Tables {
+		inDegree[tp.Table.Name] = len(deps[tp.Table.Name])
+	}
+
+	tableMap := make(map[string]*plan.TablePlan)
+	for _, tp := range p.Tables {
+		tableMap[tp.Table.Name] = tp
+	}
+
+	var levels [][]*plan.TablePlan
+	remaining := len(p.Tables)
+
+	for remaining > 0 {
+		var level []string
+		for name, deg := range inDegree {
+			if deg == 0 {
+				level = append(level, name)
+			}
+		}
+
+		if len(level) == 0 {
+			break
+		}
+
+		sort.Strings(level)
+
+		var tablePlanLevel []*plan.TablePlan
+		for _, name := range level {
+			tablePlanLevel = append(tablePlanLevel, tableMap[name])
+		}
+		levels = append(levels, tablePlanLevel)
+
+		for _, name := range level {
+			remaining--
+			inDegree[name] = -1
+			for child, parents := range deps {
+				for _, parent := range parents {
+					if parent == name {
+						inDegree[child]--
+					}
+				}
+			}
+		}
+	}
+
+	return levels
 }
 
 func (g *Generator) generateCircular(ctx context.Context, p *plan.Plan, w writer.Writer) error {

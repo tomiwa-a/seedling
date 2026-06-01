@@ -36,6 +36,7 @@ schema and optional generator overrides.`,
 		dbDSN, _ := cmd.Flags().GetString("db")
 		useCopy, _ := cmd.Flags().GetBool("copy")
 		truncate, _ := cmd.Flags().GetBool("truncate")
+		parallel, _ := cmd.Flags().GetBool("parallel")
 
 		if seed == 0 {
 			seed = time.Now().UnixNano()
@@ -70,6 +71,7 @@ schema and optional generator overrides.`,
 
 		sg := internalstream.New()
 		sg.SetSeed(uint64(seed))
+		sg.SetParallel(parallel)
 
 		if verbose {
 			fmt.Printf("Using seed: %d\n", seed)
@@ -222,6 +224,7 @@ func init() {
 	generateCmd.Flags().String("config", "", "Path to seedling.yaml config")
 	generateCmd.Flags().String("preset", "", "Use a saved preset")
 	generateCmd.Flags().Bool("dry-run", false, "Print plan without generating")
+	generateCmd.Flags().Bool("parallel", false, "Generate independent tables in parallel (breaks determinism)")
 	generateCmd.Flags().Bool("verbose", false, "Detailed progress output")
 	rootCmd.AddCommand(generateCmd)
 }
