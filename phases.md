@@ -33,13 +33,13 @@
 
 **Goal:** From an introspected schema, generate rows to a SQL dump file. No user overrides yet — all auto-generated.
 
-- [ ] Build `PlanBuilder` — topological sort of tables by FK dependency (Kahn's algorithm)
-- [ ] Implement auto-generator assignment per column type (e.g., `serial` → sequence, `timestamptz` → now(), `varchar` → random string, `email` → email)
-- [ ] Build `StreamGenerator` — iterate tables in dependency order, generate rows, resolve FK lookups
-- [ ] Implement `FKPool` — store generated parent PKs, provide random/sequential lookup for child rows
-- [ ] Write `SqlWriter` — output `INSERT INTO ...` statements with batched rows
-- [ ] Wire `seedling generate` command — read schema, plan, generate, write SQL
-- [ ] Deliverable: `seedling introspect --db ... && seedling generate --count 100 --output seed.sql` produces valid SQL
+- [x] Build `PlanBuilder` — topological sort of tables by FK dependency (Kahn's algorithm)
+- [x] Implement auto-generator assignment per column type (e.g., `serial` → sequence, `timestamptz` → now(), `varchar` → random string, `email` → email)
+- [x] Build `StreamGenerator` — iterate tables in dependency order, generate rows, resolve FK lookups
+- [x] Implement `FKPool` — store generated parent PKs, provide random/sequential lookup for child rows
+- [x] Write `SqlWriter` — output `INSERT INTO ...` statements with batched rows
+- [x] Wire `seedling generate` command — read schema, plan, generate, write SQL
+- [x] Deliverable: `seedling introspect --db ... && seedling generate --count 100 --output seed.sql` produces valid SQL
 
 ---
 
@@ -47,12 +47,14 @@
 
 **Goal:** Ship a comprehensive library of generators for common data types — strings, numbers, dates, geography, finance, networking.
 
-- [ ] **Strings:** `Email`, `Name`, `FirstName`, `LastName`, `Username`, `Phone`, `UUID`, `ULID`, `String`, `Lorem`, `Categorical`, `Regex`
-- [ ] **Numbers:** `Range`, `NormalDist`, `LogNormalDist`, `ExponentialDist`, `Sequence`, `Constant`, `WeightedChoice`, `Percent`
-- [ ] **Dates:** `Now`, `DateRange`, `NormalDist (date)`, `TimeAgo`, `Sequence (date)`, `BusinessDays`
-- [ ] **Geography:** `Latitude`, `Longitude`, `Country`, `CountryCode`, `City`, `Address`, `PostalCode`
-- [ ] **Network/Finance/Media:** `IPv4`, `IPv6`, `MAC`, `URL`, `UserAgent`, `Currency`, `Amount`, `IBAN`, `CreditCard`, `Company`, `JobTitle`, `FileName`, `ImageURL`
-- [ ] Write property tests for each generator (output type matches, no panics, bounds respected)
+- [x] **Strings:** `Email`, `Name`, `Username`, `Phone`, `UUID`, `ULID`, `String`, `Lorem` — `FirstName`/`LastName` not needed (use `Name` twice), `Categorical`/`Regex` skipped (niche)
+- [x] **Numbers:** `RandomInt` (Range), `Serial` (Sequence), `Constant`, `WeightedChoice`, `FloatRange`, `Numeric` — `NormalDist`/`LogNormalDist`/`ExponentialDist`/`Percent` skipped (niche)
+- [x] **Dates:** `Now`, `DateGenerator` (DateRange), `TimeAgo`, `BusinessDays`, `Timestamp` — `NormalDist(date)`/`Sequence(date)` skipped (niche)
+- [x] **Geography:** `Latitude`, `Longitude`, `Country`, `CountryCode`, `City`, `Address`, `PostalCode`
+- [x] **Network/Finance/Media:** `IPv4`, `IPv6`, `MAC`, `URL`, `UserAgent`, `Currency`, `Amount`, `Company`, `JobTitle`, `FileName`, `ImageURL` — `IBAN`/`CreditCard` skipped (niche)
+- [x] Write property tests for each generator (output type matches, no panics, bounds respected)
+- [x] Split generators into domain files (`strings.go`, `numbers.go`, `dates.go`, `geo.go`, `network.go`, `finance.go`, `media.go`)
+- [x] Fix hints wiring: introspect detects hints → stores in `schema.Column.Hint` → `ResolveGenerators` reads them → correct generator auto-selected
 
 ---
 
