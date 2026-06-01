@@ -3,6 +3,7 @@ package stream
 import (
 	"context"
 	"fmt"
+	"time"
 
 	genlib "github.com/tomiwa-a/seedling/internal/generator"
 	"github.com/tomiwa-a/seedling/pkg/generator"
@@ -12,10 +13,11 @@ import (
 )
 
 type Generator struct {
-	pool    *genlib.FKPool
-	tracker *genlib.UniqueTracker
-	hints   map[string]map[string]schema.GeneratorHint
-	seed    uint64
+	pool       *genlib.FKPool
+	tracker    *genlib.UniqueTracker
+	hints      map[string]map[string]schema.GeneratorHint
+	seed       uint64
+	onProgress ProgressFunc
 }
 
 func New() *Generator {
@@ -25,6 +27,10 @@ func New() *Generator {
 		hints:   make(map[string]map[string]schema.GeneratorHint),
 		seed:    0,
 	}
+}
+
+func (g *Generator) SetProgress(fn ProgressFunc) {
+	g.onProgress = fn
 }
 
 func (g *Generator) SetSeed(seed uint64) {
@@ -100,6 +106,8 @@ func (g *Generator) generateTable(ctx context.Context, tp *plan.TablePlan, w wri
 	pkColumns := findPKColumns(tp.Table)
 	batchSize := 1000
 	var batch writer.Rows
+	start := time.Now()
+	var written int64
 
 	for i := int64(0); i < int64(tp.Count); i++ {
 		row := make(writer.Row)
@@ -158,7 +166,12 @@ func (g *Generator) generateTable(ctx context.Context, tp *plan.TablePlan, w wri
 			if err := w.WriteTable(ctx, tp.Table, batch); err != nil {
 				return err
 			}
+			written += int64(len(batch))
 			batch = nil
+
+			if g.onProgress != nil {
+				g.onProgress(calcProgress(tp.Table.Name, written, int64(tp.Count), time.Since(start)))
+			}
 		}
 	}
 
@@ -166,6 +179,11 @@ func (g *Generator) generateTable(ctx context.Context, tp *plan.TablePlan, w wri
 		if err := w.WriteTable(ctx, tp.Table, batch); err != nil {
 			return err
 		}
+		written += int64(len(batch))
+	}
+
+	if g.onProgress != nil {
+		g.onProgress(calcProgress(tp.Table.Name, written, int64(tp.Count), time.Since(start)))
 	}
 
 	return nil

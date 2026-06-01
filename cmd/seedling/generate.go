@@ -73,6 +73,15 @@ schema and optional generator overrides.`,
 
 		if verbose {
 			fmt.Printf("Using seed: %d\n", seed)
+			sg.SetProgress(func(p internalstream.Progress) {
+				pct := float64(p.RowsWritten) / float64(p.TotalRows) * 100
+				fmt.Printf("\r  [%s] %d/%d rows (%.0f%%) | %.0f rows/sec | ETA %s",
+					p.Table, p.RowsWritten, p.TotalRows, pct,
+					p.RowsPerSec, p.ETA.Truncate(time.Second))
+				if p.RowsWritten >= p.TotalRows {
+					fmt.Println()
+				}
+			})
 		}
 
 		for _, tp := range plan.Tables {
