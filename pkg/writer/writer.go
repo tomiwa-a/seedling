@@ -20,10 +20,24 @@ type Writer interface {
 	Close() error
 }
 
-type WriterFunc func(ctx context.Context, table schema.Table, rows Rows) error
+type WriterFunc struct {
+	WriteTableFn func(ctx context.Context, table schema.Table, rows Rows) error
+	CloseFn      func() error
+}
 
-func (f WriterFunc) WriteTable(ctx context.Context, table schema.Table, rows Rows) error {
-	return f(ctx, table, rows)
+func NewWriterFunc(writeFn func(ctx context.Context, table schema.Table, rows Rows) error) *WriterFunc {
+	return &WriterFunc{
+		WriteTableFn: writeFn,
+		CloseFn:      func() error { return nil },
+	}
+}
+
+func (f *WriterFunc) WriteTable(ctx context.Context, table schema.Table, rows Rows) error {
+	return f.WriteTableFn(ctx, table, rows)
+}
+
+func (f *WriterFunc) Close() error {
+	return f.CloseFn()
 }
 
 type MultiWriter struct {
