@@ -151,12 +151,32 @@ schema and optional generator overrides.`,
 
 			w = dbWriter
 		} else {
-			outFile, err := os.Create(output)
-			if err != nil {
-				return fmt.Errorf("create output: %w", err)
+			format, _ := cmd.Flags().GetString("format")
+
+			switch format {
+			case "csv":
+				if err := os.MkdirAll(output, 0755); err != nil {
+					return fmt.Errorf("create output dir: %w", err)
+				}
+				w = internalwriter.NewCsvWriter(output)
+			case "jsonl", "jsonlines":
+				if err := os.MkdirAll(output, 0755); err != nil {
+					return fmt.Errorf("create output dir: %w", err)
+				}
+				w = internalwriter.NewJsonLinesWriter(output)
+			case "parquet":
+				if err := os.MkdirAll(output, 0755); err != nil {
+					return fmt.Errorf("create output dir: %w", err)
+				}
+				w = internalwriter.NewParquetWriter(output)
+			default:
+				outFile, err := os.Create(output)
+				if err != nil {
+					return fmt.Errorf("create output: %w", err)
+				}
+				defer outFile.Close()
+				w = internalwriter.NewSqlWriter(outFile, internalwriter.WithBatchSize(batchSize))
 			}
-			defer outFile.Close()
-			w = internalwriter.NewSqlWriter(outFile, internalwriter.WithBatchSize(batchSize))
 		}
 
 		if verbose {
