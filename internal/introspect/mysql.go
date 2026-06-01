@@ -251,6 +251,7 @@ func (mi *MysqlIntrospector) extractConstraints(ctx context.Context, tableName s
 		LEFT JOIN information_schema.KEY_COLUMN_USAGE kcu
 			ON tc.CONSTRAINT_NAME = kcu.CONSTRAINT_NAME
 			AND tc.TABLE_SCHEMA = kcu.TABLE_SCHEMA
+			AND tc.TABLE_NAME = kcu.TABLE_NAME
 		WHERE tc.TABLE_SCHEMA = DATABASE()
 			AND tc.TABLE_NAME = ?
 			AND tc.CONSTRAINT_TYPE IN ('UNIQUE', 'PRIMARY KEY')
