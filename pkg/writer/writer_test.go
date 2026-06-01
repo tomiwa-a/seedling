@@ -10,7 +10,7 @@ import (
 
 func TestWriterFuncAdapter(t *testing.T) {
 	var called bool
-	w := writer.NewWriterFunc(func(ctx context.Context, table schema.Table, rows writer.Rows) error {
+	w := writer.NewWriterFunc(func(ctx context.Context, table *schema.Table, rows writer.Rows) error {
 		called = true
 		if len(rows) != 2 {
 			t.Errorf("rows length = %d, want 2", len(rows))
@@ -18,7 +18,7 @@ func TestWriterFuncAdapter(t *testing.T) {
 		return nil
 	})
 
-	err := w.WriteTable(context.Background(), schema.Table{Name: "test"}, writer.Rows{
+	err := w.WriteTable(context.Background(), &schema.Table{Name: "test"}, writer.Rows{
 		{"id": 1, "name": "alice"},
 		{"id": 2, "name": "bob"},
 	})
@@ -32,17 +32,17 @@ func TestWriterFuncAdapter(t *testing.T) {
 
 func TestMultiWriterCallsAll(t *testing.T) {
 	var callCount int
-	w1 := writer.NewWriterFunc(func(ctx context.Context, table schema.Table, rows writer.Rows) error {
+	w1 := writer.NewWriterFunc(func(ctx context.Context, table *schema.Table, rows writer.Rows) error {
 		callCount++
 		return nil
 	})
-	w2 := writer.NewWriterFunc(func(ctx context.Context, table schema.Table, rows writer.Rows) error {
+	w2 := writer.NewWriterFunc(func(ctx context.Context, table *schema.Table, rows writer.Rows) error {
 		callCount++
 		return nil
 	})
 
 	mw := writer.NewMultiWriter(w1, w2)
-	err := mw.WriteTable(context.Background(), schema.Table{Name: "test"}, writer.Rows{{"a": 1}})
+	err := mw.WriteTable(context.Background(), &schema.Table{Name: "test"}, writer.Rows{{"a": 1}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -52,15 +52,15 @@ func TestMultiWriterCallsAll(t *testing.T) {
 }
 
 func TestMultiWriterErrorStopsEarly(t *testing.T) {
-	w1 := writer.NewWriterFunc(func(ctx context.Context, table schema.Table, rows writer.Rows) error {
+	w1 := writer.NewWriterFunc(func(ctx context.Context, table *schema.Table, rows writer.Rows) error {
 		return nil
 	})
-	w2 := writer.NewWriterFunc(func(ctx context.Context, table schema.Table, rows writer.Rows) error {
+	w2 := writer.NewWriterFunc(func(ctx context.Context, table *schema.Table, rows writer.Rows) error {
 		return nil
 	})
 
 	mw := writer.NewMultiWriter(w1, w2)
-	err := mw.WriteTable(context.Background(), schema.Table{Name: "test"}, writer.Rows{{"a": 1}})
+	err := mw.WriteTable(context.Background(), &schema.Table{Name: "test"}, writer.Rows{{"a": 1}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,7 +88,7 @@ type closeRecorder struct {
 	closeFn func() error
 }
 
-func (c *closeRecorder) WriteTable(ctx context.Context, table schema.Table, rows writer.Rows) error {
+func (c *closeRecorder) WriteTable(ctx context.Context, table *schema.Table, rows writer.Rows) error {
 	return nil
 }
 

@@ -15,9 +15,9 @@ func TestSqlWriterSingleRow(t *testing.T) {
 	var buf bytes.Buffer
 	sw := NewSqlWriter(&buf)
 
-	tbl := schema.Table{
+	tbl := &schema.Table{
 		Name: "users",
-		Columns: []schema.Column{
+		Columns: []*schema.Column{
 			{Name: "id", Type: schema.TypeSerial},
 			{Name: "email", Type: schema.TypeVarchar},
 		},
@@ -52,9 +52,9 @@ func TestSqlWriterMultiRow(t *testing.T) {
 	var buf bytes.Buffer
 	sw := NewSqlWriter(&buf)
 
-	tbl := schema.Table{
+	tbl := &schema.Table{
 		Name: "items",
-		Columns: []schema.Column{
+		Columns: []*schema.Column{
 			{Name: "id", Type: schema.TypeSerial},
 			{Name: "label", Type: schema.TypeVarchar},
 		},
@@ -81,9 +81,9 @@ func TestSqlWriterEscaping(t *testing.T) {
 	var buf bytes.Buffer
 	sw := NewSqlWriter(&buf)
 
-	tbl := schema.Table{
+	tbl := &schema.Table{
 		Name: "t",
-		Columns: []schema.Column{
+		Columns: []*schema.Column{
 			{Name: "v", Type: schema.TypeText},
 		},
 	}
@@ -108,9 +108,9 @@ func TestSqlWriterTypes(t *testing.T) {
 	var buf bytes.Buffer
 	sw := NewSqlWriter(&buf)
 
-	tbl := schema.Table{
+	tbl := &schema.Table{
 		Name: "types",
-		Columns: []schema.Column{
+		Columns: []*schema.Column{
 			{Name: "id", Type: schema.TypeBigSerial},
 			{Name: "active", Type: schema.TypeBoolean},
 			{Name: "score", Type: schema.TypeFloat},
@@ -144,9 +144,9 @@ func TestSqlWriterNullable(t *testing.T) {
 	var buf bytes.Buffer
 	sw := NewSqlWriter(&buf)
 
-	tbl := schema.Table{
+	tbl := &schema.Table{
 		Name: "t",
-		Columns: []schema.Column{
+		Columns: []*schema.Column{
 			{Name: "id", Type: schema.TypeSerial},
 			{Name: "optional", Type: schema.TypeVarchar, Nullable: true},
 		},
@@ -171,9 +171,9 @@ func TestSqlWriterBatchSize(t *testing.T) {
 	var buf bytes.Buffer
 	sw := NewSqlWriter(&buf, WithBatchSize(2))
 
-	tbl := schema.Table{
+	tbl := &schema.Table{
 		Name: "t",
-		Columns: []schema.Column{
+		Columns: []*schema.Column{
 			{Name: "id", Type: schema.TypeSerial},
 		},
 	}
@@ -199,9 +199,9 @@ func TestSqlWriterSchemaPrefix(t *testing.T) {
 	var buf bytes.Buffer
 	sw := NewSqlWriter(&buf, WithSchema("public"))
 
-	tbl := schema.Table{
+	tbl := &schema.Table{
 		Name: "users",
-		Columns: []schema.Column{
+		Columns: []*schema.Column{
 			{Name: "id", Type: schema.TypeSerial},
 		},
 	}
@@ -225,7 +225,7 @@ func TestSqlWriterEmptyRows(t *testing.T) {
 	var buf bytes.Buffer
 	sw := NewSqlWriter(&buf)
 
-	tbl := schema.Table{
+	tbl := &schema.Table{
 		Name: "empty",
 	}
 
@@ -245,9 +245,9 @@ func TestTrimWriter(t *testing.T) {
 	tw := NewTrimWriter(inner)
 	tw.Trim("users", []string{"secret"})
 
-	tbl := schema.Table{
+	tbl := &schema.Table{
 		Name: "users",
-		Columns: []schema.Column{
+		Columns: []*schema.Column{
 			{Name: "id", Type: schema.TypeSerial},
 			{Name: "secret", Type: schema.TypeVarchar},
 			{Name: "email", Type: schema.TypeVarchar},

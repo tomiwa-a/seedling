@@ -40,7 +40,7 @@ func NewSqlWriter(w io.Writer, opts ...SqlOption) *SqlWriter {
 	return sw
 }
 
-func (s *SqlWriter) WriteTable(ctx context.Context, table schema.Table, rows writerinterface.Rows) error {
+func (s *SqlWriter) WriteTable(ctx context.Context, table *schema.Table, rows writerinterface.Rows) error {
 	if len(rows) == 0 {
 		return nil
 	}
@@ -165,7 +165,7 @@ func (tw *TrimWriter) Trim(table string, columns []string) {
 	tw.cols[table] = columns
 }
 
-func (tw *TrimWriter) WriteTable(ctx context.Context, table schema.Table, rows writerinterface.Rows) error {
+func (tw *TrimWriter) WriteTable(ctx context.Context, table *schema.Table, rows writerinterface.Rows) error {
 	trimmed := make(writerinterface.Rows, len(rows))
 	drop := tw.cols[table.Name]
 
@@ -186,7 +186,7 @@ func (tw *TrimWriter) WriteTable(ctx context.Context, table schema.Table, rows w
 		trimmed[i] = r
 	}
 
-	tc := table
+	tc := *table
 	tc.Columns = nil
 	for _, col := range table.Columns {
 		drop := false
@@ -201,7 +201,7 @@ func (tw *TrimWriter) WriteTable(ctx context.Context, table schema.Table, rows w
 		}
 	}
 
-	return tw.inner.WriteTable(ctx, tc, trimmed)
+	return tw.inner.WriteTable(ctx, &tc, trimmed)
 }
 
 func (tw *TrimWriter) Close() error {
