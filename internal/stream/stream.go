@@ -272,9 +272,7 @@ func (g *Generator) resolveGenerators(tbl *schema.Table) (map[string]generator.G
 	if tableHints == nil {
 		tableHints = make(map[string]schema.GeneratorHint)
 	}
-	deriver := genlib.NewSeedDeriver(g.seed)
-	tableSeed := deriver.TableSeed(tbl.Name)
-	return genlib.ResolveGenerators(tbl.Columns, tableHints, g.pool, tableSeed)
+	return genlib.ResolveGenerators(tbl.Columns, tableHints, g.pool, g.seed, tbl.Name)
 }
 
 func findPKColumns(tbl *schema.Table) []string {
