@@ -45,7 +45,7 @@ schema and optional generator overrides.`,
 			fmt.Printf("Loaded schema: %s (%d tables)\n", sch.Name, len(sch.Tables))
 		}
 
-		pb := internalplanbuilder.New(count)
+		pb := internalplanbuilder.NewWithSeed(count, seed)
 		plan, err := pb.Build(ctx, sch, nil)
 		if err != nil {
 			return fmt.Errorf("build plan: %w", err)

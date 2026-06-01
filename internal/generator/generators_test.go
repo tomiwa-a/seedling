@@ -150,7 +150,7 @@ func TestBoolGenerator(t *testing.T) {
 }
 
 func TestUUIDGenerator(t *testing.T) {
-	g := &UUIDGenerator{}
+	g := &UUIDGenerator{rnd: rand.New(rand.NewSource(42))}
 	ctx := context.Background()
 	row := testRow{}
 
@@ -386,7 +386,7 @@ func TestResolveGenerators(t *testing.T) {
 		"name":  schema.HintName,
 	}
 
-	gens, err := ResolveGenerators(columns, hints, pool, 42)
+	gens, err := ResolveGenerators(columns, hints, pool, 42, "test")
 	if err != nil {
 		t.Fatal(err)
 	}

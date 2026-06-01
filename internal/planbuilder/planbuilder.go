@@ -2,9 +2,9 @@ package planbuilder
 
 import (
 	"context"
-	"crypto/rand"
 	"fmt"
-	"math/big"
+	"math/rand"
+	"sort"
 	"time"
 
 	"github.com/tomiwa-a/seedling/pkg/generator"
@@ -20,6 +20,13 @@ type Builder struct {
 func New(rootCount int) *Builder {
 	return &Builder{
 		rootCount: rootCount,
+	}
+}
+
+func NewWithSeed(rootCount int, seed int64) *Builder {
+	return &Builder{
+		rootCount: rootCount,
+		seed:      seed,
 	}
 }
 
@@ -82,7 +89,7 @@ func (b *Builder) Build(ctx context.Context, s *schema.Schema, configs []generat
 	}
 
 	uniqueFKs := buildUniqueFKMap(s.Tables)
-	counts := computeCounts(ordered, deps, uniqueFKs, b.rootCount)
+	counts := computeCounts(ordered, deps, uniqueFKs, b.rootCount, b.seed)
 
 	var tablePlans []*plan.TablePlan
 	var totalCount int64
@@ -146,6 +153,7 @@ func topologicalSort(tables []*schema.Table, deps map[string][]string) ([]*schem
 			queue = append(queue, t.Name)
 		}
 	}
+	sort.Strings(queue)
 
 	var sorted []*schema.Table
 	for len(queue) > 0 {
@@ -154,16 +162,19 @@ func topologicalSort(tables []*schema.Table, deps map[string][]string) ([]*schem
 
 		sorted = append(sorted, tableMap[name])
 
+		var newlyReady []string
 		for child, parents := range deps {
 			for _, parent := range parents {
 				if parent == name {
 					inDegree[child]--
 					if inDegree[child] == 0 {
-						queue = append(queue, child)
+						newlyReady = append(newlyReady, child)
 					}
 				}
 			}
 		}
+		sort.Strings(newlyReady)
+		queue = append(queue, newlyReady...)
 	}
 
 	if len(sorted) != len(tables) {
@@ -190,11 +201,27 @@ func buildUniqueFKMap(tables []*schema.Table) map[string]struct{} {
 	return uniqueFK
 }
 
-func computeCounts(ordered []*schema.Table, deps map[string][]string, uniqueFKs map[string]struct{}, rootCount int) map[string]int {
+func computeCounts(ordered []*schema.Table, deps map[string][]string, uniqueFKs map[string]struct{}, rootCount int, seed int64) map[string]int {
 	counts := make(map[string]int)
 	tableSet := make(map[string]bool)
 	for _, t := range ordered {
 		tableSet[t.Name] = true
+	}
+
+	childTables := make([]string, 0)
+	for _, t := range ordered {
+		if len(deps[t.Name]) > 0 {
+			childTables = append(childTables, t.Name)
+		}
+	}
+	sort.Strings(childTables)
+
+	rnd := rand.New(rand.NewSource(seed))
+	multipliers := make(map[string]int)
+	for _, name := range childTables {
+		if _, hasUniqueFK := uniqueFKs[name]; !hasUniqueFK {
+			multipliers[name] = 5 + rnd.Intn(11)
+		}
 	}
 
 	for _, t := range ordered {
@@ -217,8 +244,7 @@ func computeCounts(ordered []*schema.Table, deps map[string][]string, uniqueFKs 
 			if _, hasUniqueFK := uniqueFKs[t.Name]; hasUniqueFK {
 				counts[t.Name] = maxParentCount
 			} else {
-				multiplier := 5 + int(cryptoRandIntn(11))
-				counts[t.Name] = maxParentCount * multiplier
+				counts[t.Name] = maxParentCount * multipliers[t.Name]
 			}
 		}
 	}
@@ -342,12 +368,4 @@ func findCycles(deps map[string][]string) [][]string {
 	}
 
 	return cycles
-}
-
-func cryptoRandIntn(n int) int64 {
-	if n <= 0 {
-		return 0
-	}
-	val, _ := rand.Int(rand.Reader, big.NewInt(int64(n)))
-	return val.Int64()
 }

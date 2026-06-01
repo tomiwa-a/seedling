@@ -99,10 +99,23 @@ func (g *PhoneGenerator) Generate(ctx context.Context, row gen.RowContext) (any,
 	return fmt.Sprintf("+234-%s-%s-%s", digits[:3], digits[3:6], digits[6:]), nil
 }
 
-type UUIDGenerator struct{}
+type UUIDGenerator struct {
+	rnd *rand.Rand
+}
+
+func (g *UUIDGenerator) SetRand(rnd *rand.Rand) { g.rnd = rnd }
 
 func (g *UUIDGenerator) Generate(ctx context.Context, row gen.RowContext) (any, error) {
-	return newUUID(), nil
+	rnd := g.rnd
+	if rnd == nil {
+		rnd = rand.New(rand.NewSource(0))
+	}
+	b := make([]byte, 16)
+	rnd.Read(b)
+	b[6] = (b[6] & 0x0f) | 0x40
+	b[8] = (b[8] & 0x3f) | 0x80
+	return fmt.Sprintf("%08x-%04x-%04x-%04x-%012x",
+		b[0:4], b[4:6], b[6:8], b[8:10], b[10:]), nil
 }
 
 type ULIDGenerator struct {

@@ -122,8 +122,8 @@ func NewSeededRand(seed uint64) *rand.Rand {
 	return rand.New(rand.NewSource(int64(seed)))
 }
 
-func ResolveGenerators(columns []*schema.Column, hints map[string]schema.GeneratorHint, pool *FKPool, seed uint64) (map[string]gen.Generator, error) {
-	deriver := NewSeedDeriver(seed)
+func ResolveGenerators(columns []*schema.Column, hints map[string]schema.GeneratorHint, pool *FKPool, masterSeed uint64, tableName string) (map[string]gen.Generator, error) {
+	deriver := NewSeedDeriver(masterSeed)
 	gens := make(map[string]gen.Generator, len(columns))
 	for _, col := range columns {
 		hint := hints[col.Name]
@@ -135,7 +135,7 @@ func ResolveGenerators(columns []*schema.Column, hints map[string]schema.Generat
 			return nil, fmt.Errorf("resolve generator for %s: %w", col.Name, err)
 		}
 		if seeded, ok := g.(Seeded); ok {
-			colSeed := deriver.ColumnSeed("", col.Name)
+			colSeed := deriver.ColumnSeed(tableName, col.Name)
 			rnd := rand.New(rand.NewSource(int64(colSeed)))
 			seeded.SetRand(rnd)
 		}
