@@ -24,6 +24,9 @@
 .DS_Store
 Thumbs.db
 
+# Build output
+/build/
+
 # Seedling generated
 seed.sql
 *.csv
