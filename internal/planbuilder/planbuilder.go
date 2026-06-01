@@ -32,8 +32,10 @@ func (b *Builder) Build(ctx context.Context, s *schema.Schema, configs []generat
 	deps := buildDependencyGraph(s.Tables)
 
 	ordered, err := topologicalSort(s.Tables, deps)
+
+	circularGroup := detectCircularDeps(s.Tables, deps)
+
 	if err != nil {
-		circularGroup := detectCircularDeps(s.Tables, deps)
 		if circularGroup == nil {
 			return nil, fmt.Errorf("topological sort: %w", err)
 		}
@@ -53,18 +55,30 @@ func (b *Builder) Build(ctx context.Context, s *schema.Schema, configs []generat
 		}
 
 		pass1Deps := buildDependencyGraph(pass1)
+		for node := range pass1Deps {
+			var filtered []string
+			for _, dep := range pass1Deps[node] {
+				if dep != node {
+					filtered = append(filtered, dep)
+				}
+			}
+			pass1Deps[node] = filtered
+		}
 		pass1Ordered, err := topologicalSort(pass1, pass1Deps)
 		if err != nil {
 			return nil, fmt.Errorf("topological sort pass 1: %w", err)
 		}
 
 		pass2Deps := buildDependencyGraph(pass2)
-		pass2Ordered, err := topologicalSort(pass2, pass2Deps)
-		if err != nil {
-			return nil, fmt.Errorf("topological sort pass 2: %w", err)
+		if len(pass2) > 0 {
+			pass2Ordered, err := topologicalSort(pass2, pass2Deps)
+			if err != nil {
+				return nil, fmt.Errorf("topological sort pass 2: %w", err)
+			}
+			ordered = append(pass1Ordered, pass2Ordered...)
+		} else {
+			ordered = pass1Ordered
 		}
-
-		ordered = append(pass1Ordered, pass2Ordered...)
 	}
 
 	uniqueFKs := buildUniqueFKMap(s.Tables)
@@ -91,11 +105,8 @@ func (b *Builder) Build(ctx context.Context, s *schema.Schema, configs []generat
 		CreatedAt:  time.Now(),
 	}
 
-	if len(ordered) < len(s.Tables) {
-		cg := detectCircularDeps(s.Tables, deps)
-		if cg != nil {
-			p.CircularGroup = cg
-		}
+	if circularGroup != nil {
+		p.CircularGroup = circularGroup
 	}
 
 	return p, nil
@@ -221,27 +232,54 @@ func detectCircularDeps(tables []*schema.Table, deps map[string][]string) *plan.
 		return nil
 	}
 
-	cycleNodes := make(map[string]bool)
+	selfRefNodes := make(map[string]bool)
+	mutualCycleNodes := make(map[string]bool)
 	var cycleEdges []string
+
 	for _, cycle := range cycles {
-		for i := 0; i < len(cycle); i++ {
-			cycleNodes[cycle[i]] = true
-			next := cycle[(i+1)%len(cycle)]
-			cycleEdges = append(cycleEdges, cycle[i]+"->"+next)
+		if len(cycle) == 1 {
+			selfRefNodes[cycle[0]] = true
+		} else {
+			for i := 0; i < len(cycle); i++ {
+				mutualCycleNodes[cycle[i]] = true
+				next := cycle[(i+1)%len(cycle)]
+				cycleEdges = append(cycleEdges, cycle[i]+"->"+next)
+			}
 		}
 	}
 
-	tableNames := make(map[string]bool)
-	for _, t := range tables {
-		tableNames[t.Name] = true
+	tableOrder := make(map[string]int)
+	for i, t := range tables {
+		tableOrder[t.Name] = i
+	}
+
+	pass2Set := make(map[string]bool)
+	for _, cycle := range cycles {
+		if len(cycle) > 1 {
+			for i, node := range cycle {
+				if i%2 == 0 {
+					pass2Set[node] = true
+				}
+			}
+		}
 	}
 
 	var pass1, pass2 []string
 	for _, t := range tables {
-		if cycleNodes[t.Name] {
+		if selfRefNodes[t.Name] {
+			pass1 = append(pass1, t.Name)
+		} else if pass2Set[t.Name] {
 			pass2 = append(pass2, t.Name)
+		} else if mutualCycleNodes[t.Name] {
+			pass1 = append(pass1, t.Name)
 		} else {
 			pass1 = append(pass1, t.Name)
+		}
+	}
+
+	if len(cycleEdges) == 0 {
+		for node := range selfRefNodes {
+			cycleEdges = append(cycleEdges, node+"->"+node)
 		}
 	}
 
