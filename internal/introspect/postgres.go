@@ -137,8 +137,11 @@ func (pi *PostgresIntrospector) extractColumns(ctx context.Context, schemaName, 
 			return nil, fmt.Errorf("scan column row: %w", err)
 		}
 
+		colType := mapColumnType(rc.UDTName, rc.DataType)
+
 		col := schema.Column{
 			Name:     rc.Name,
+			Type:     colType,
 			RawType:  rc.UDTName,
 			Nullable: rc.IsNullable == "YES",
 			Default:  rc.ColumnDefault,
@@ -152,6 +155,13 @@ func (pi *PostgresIntrospector) extractColumns(ctx context.Context, schemaName, 
 		}
 		if rc.NumericScale != nil {
 			col.NumericScale = *rc.NumericScale
+		}
+
+		if colType == schema.TypeEnum {
+			values, err := pi.extractEnumValues(ctx, schemaName, rc.UDTName)
+			if err == nil {
+				col.EnumValues = values
+			}
 		}
 
 		columns = append(columns, col)
