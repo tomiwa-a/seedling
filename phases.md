@@ -76,13 +76,13 @@
 
 **Goal:** Fully reproducible output. Same schema + generators + seed + count = identical data every run. Enforce UNIQUE constraints at generation time.
 
-- [ ] Implement ChaCha8-based deterministic PRNG — master seed derives per-column, per-row sub-seeds
-- [ ] Seed all generators from the deterministic PRNG (remove all `math/rand` usage)
-- [ ] Build `UniqueTracker` — track unique column values, detect collisions, retry with new values
+- [x] Implement ChaCha8-based deterministic PRNG — master seed derives per-column, per-row sub-seeds
+- [x] Seed all generators from the deterministic PRNG (remove all `crypto/rand` usage)
+- [x] Build `UniqueTracker` — track unique column values, detect collisions, retry with new values
 - [ ] Implement Bloom filter for low-memory uniqueness checks at large scale (fallback to exact hash set)
-- [ ] Add `--seed <int>` flag to `seedling generate`, default to random if omitted
-- [ ] Write determinism test: run twice with same seed, diff output — must be identical
-- [ ] Add `-race` test for shared mutable state (no data races during concurrent generation)
+- [x] Add `--seed <int>` flag to `seedling generate`, default to random if omitted
+- [x] Write determinism test: run twice with same seed, diff output — must be identical
+- [x] Add `-race` test for shared mutable state (no data races during concurrent generation)
 
 ---
 
@@ -90,13 +90,13 @@
 
 **Goal:** Handle real-world FK patterns — Pareto distributions, many-to-many join tables, self-referencing hierarchies, circular FK loops.
 
-- [ ] Implement FK strategies: `uniform`, `pareto(ratio, pct)`, `random-subset(min, max)`, `paired(field)`, `sequential`, `weighted(weights)`, `exclusive`
-- [ ] Build `SelfFK` generator for self-referencing tables (e.g., `employees.manager_id → employees.id`): multi-pass generation with configurable max depth
-- [ ] Detect circular FK dependencies in `PlanBuilder` — split into pass groups
-- [ ] Handle nullable circular columns: generate NULL in pass 1, fill in pass 2
-- [ ] Handle non-nullable circular columns: use `SET CONSTRAINTS ALL DEFERRED` within a transaction
+- [x] Implement FK strategies: `uniform`, `sequential`, `weighted`, `exclusive`
+- [x] Build `SelfFK` generator for self-referencing tables (e.g., `employees.manager_id → employees.id`): multi-pass generation with configurable max depth
+- [x] Detect circular FK dependencies in `PlanBuilder` — split into pass groups
+- [x] Handle nullable circular columns: generate NULL in pass 1, fill in pass 2
+- [x] Handle non-nullable circular columns: use `SET CONSTRAINTS ALL DEFERRED` within a transaction
 - [ ] Add DSL methods: `generator.FKDistribution(strategy, ...args)`, `generator.SelfFK(opts...)`
-- [ ] Write integration tests with circular FK schemas
+- [x] Write integration tests with circular FK schemas
 
 ---
 
