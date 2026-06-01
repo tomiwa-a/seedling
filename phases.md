@@ -104,13 +104,13 @@
 
 **Goal:** Generate directly into a live database with batched INSERTs and COPY protocol for maximum throughput.
 
-- [ ] Implement `DbWriter` — connect to Postgres, batch INSERT with configurable batch size (`--batch-size`)
-- [ ] Implement `CopyWriter` — use pgx COPY protocol for row streaming (max performance)
-- [ ] Add `--truncate` flag — `TRUNCATE ... CASCADE` tables before generation
-- [ ] Add `--dry-run` flag — print generation plan (row counts per table, FK order, estimated size) without writing
-- [ ] Add `--verbose` progress output (per-table progress, rows/sec, ETA)
-- [ ] Performance benchmark: 10K/500K/10M rows, measure throughput, memory, and CPU profiles
-- [ ] Parallel generation: identify independent table subgraphs and generate concurrently
+- [x] Implement `DbWriter` — connect to Postgres, batch INSERT with configurable batch size (`--batch-size`)
+- [x] Implement `CopyWriter` — use pgx COPY protocol for row streaming (max performance)
+- [x] Add `--truncate` flag — `TRUNCATE ... CASCADE` tables before generation
+- [x] Add `--dry-run` flag — print generation plan (row counts per table, FK order, estimated size) without writing
+- [x] Add `--verbose` progress output (per-table progress, rows/sec, ETA)
+- [x] Performance benchmark: 10K/500K/10M rows, measure throughput, memory, and CPU profiles
+- [x] Parallel generation: identify independent table subgraphs and generate concurrently
 
 ---
 
