@@ -132,12 +132,12 @@
 
 **Goal:** Production-ready CLI with config files, preset management, file watching, and distribution artifacts (Docker, CI templates, docs).
 
-- [ ] Implement config file support (`seedling.yaml`) — all CLI flags expressible as YAML, with `${ENV_VAR}` interpolation
+- [x] Implement config file support (`seedling.yaml`) — all CLI flags expressible as YAML, with `${ENV_VAR}` interpolation
 - [ ] Build preset system: `seedling preset save/list/show/delete` — presets stored in `~/.config/seedling/presets.yaml`
-- [ ] Implement `seedling watch` — fsnotify on schema.yaml and generators dir, auto-regenerate on change with configurable debounce
-- [ ] Add progress bars (`charmbracelet/bubbletea` or `cheggaaa/pb`) for generation and introspection
+- [x] Implement `seedling watch` — fsnotify on schema.yaml and generators dir, auto-regenerate on change with configurable debounce
+- [x] Add progress bars (`cheggaaa/pb`) for generation and introspection
 - [ ] Write comprehensive CI integration guides: GitHub Actions, GitLab CI, CircleCI, Docker Compose
-- [ ] Build Docker image (multi-arch: amd64, arm64), publish to GHCR
+- [x] Build Docker image (multi-arch: amd64, arm64), publish to GHCR
 - [ ] Set up release automation (goreleaser) — binaries for Linux, macOS, Windows
 - [ ] Ship phase-end demo: point at real schema, generate 1M rows, verify determinism, time it
 
