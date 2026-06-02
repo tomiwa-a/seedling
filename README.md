@@ -168,33 +168,16 @@ go install github.com/tomiwa-a/seedling/cmd/seedling@latest
 ### Docker
 
 ```bash
-# Build
 docker build -t seedling .
 
-# Run
-docker run --rm seedling --help
+# Generate from local schema files
+docker run --rm -v $(pwd):/data seedling generate --schema /data/schema.yaml --output /data/seed.sql
 
-# Generate from a local schema file
-docker run --rm -v $(pwd):/data seedling generate --schema /data/schema.yaml
+# Introspect a database
+docker run --rm seedling introspect --db postgres://user:pass@host:5432/mydb
 
-# Introspect a host database (use host.docker.internal on macOS)
-docker run --rm seedling introspect \
-  --db postgres://postgres:postgres@host.docker.internal:5432/mydb
-```
-
-### Docker Compose
-
-The included `docker-compose.yml` shows three patterns:
-
-```bash
-# 1. Spin up Postgres + generate test data directly into it
-docker compose up seed-pg
-
-# 2. Introspect the database and save the schema
-docker compose up introspect
-
-# 3. Generate from a schema file to SQL
-docker compose up seed-file
+# Use with config file
+docker run --rm -v $(pwd):/data seedling generate --config /data/seedling.yaml
 ```
 
 ## Architecture
