@@ -62,11 +62,11 @@
 
 **Goal:** Allow users to override auto-generated columns with a Go-based DSL. Compile user generators alongside Seedling.
 
-- [ ] Design `generator.Table(name)` DSL — chainable `.Column(name, gen)` calls returning a `TableConfig`
-- [ ] Implement DSL merge logic: user overrides merged on top of auto-detected generators per column
-- [ ] Build dependency injection for generators referencing other columns in the same row (`generator.Context`, `Computed`)
-- [ ] Implement `generator.Func(func(ctx Context) any)` — custom inline generator functions
-- [ ] Add `seedling generate --generators ./generators` flag to load user generator packages
+- [x] Design `generator.Table(name)` DSL — chainable `.Column(name, gen)` calls returning a `TableConfig`
+- [x] Implement DSL merge logic: user overrides merged on top of auto-detected generators per column
+- [x] Build dependency injection for generators referencing other columns in the same row (`generator.Context`, `Computed`)
+- [x] Implement `generator.Func(func(ctx Context) any)` — custom inline generator functions
+- [x] Add `seedling generate --generators ./generators` flag to load user generator packages
 - [ ] Write `seedling validate` command — validate user generators against schema (detect stale column refs, type mismatches)
 - [ ] Document DSL with examples for common patterns
 

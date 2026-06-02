@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
+	"github.com/tomiwa-a/seedling/pkg/generator"
 	internalplanbuilder "github.com/tomiwa-a/seedling/internal/planbuilder"
 	internalstream "github.com/tomiwa-a/seedling/internal/stream"
 	internalwriter "github.com/tomiwa-a/seedling/internal/writer"
@@ -29,6 +30,7 @@ schema and optional generator overrides.`,
 		output, _ := cmd.Flags().GetString("output")
 		schemaFile, _ := cmd.Flags().GetString("schema")
 		configFile, _ := cmd.Flags().GetString("config")
+		generatorsFile, _ := cmd.Flags().GetString("generators")
 		dryRun, _ := cmd.Flags().GetBool("dry-run")
 		verbose, _ := cmd.Flags().GetBool("verbose")
 		batchSize, _ := cmd.Flags().GetInt("batch-size")
@@ -37,6 +39,24 @@ schema and optional generator overrides.`,
 		useCopy, _ := cmd.Flags().GetBool("copy")
 		truncate, _ := cmd.Flags().GetBool("truncate")
 		parallel, _ := cmd.Flags().GetBool("parallel")
+		formatStr, _ := cmd.Flags().GetString("format")
+
+		cfg := loadConfigOrDefault(configFile)
+		if cfg != nil {
+			applyConfigString(&schemaFile, cmd, "schema", cfg.Schema.File)
+			applyConfigString(&output, cmd, "output", cfg.Output.File)
+			applyConfigString(&dbDSN, cmd, "db", cfg.Database.DSN)
+			applyConfigString(&generatorsFile, cmd, "generators", cfg.Generators.File)
+			applyConfigString(&formatStr, cmd, "format", cfg.Output.Format)
+			applyConfigInt(&count, cmd, "count", cfg.Generation.Count)
+			applyConfigInt(&batchSize, cmd, "batch-size", cfg.Output.BatchSize)
+			applyConfigInt64(&seed, cmd, "seed", cfg.Generation.Seed)
+			applyConfigBool(&dryRun, cmd, "dry-run", cfg.Generation.DryRun)
+			applyConfigBool(&verbose, cmd, "verbose", cfg.Generation.Verbose)
+			applyConfigBool(&truncate, cmd, "truncate", cfg.Generation.Truncate)
+			applyConfigBool(&parallel, cmd, "parallel", cfg.Generation.Parallel)
+			applyConfigBool(&useCopy, cmd, "copy", cfg.Output.UseCopy)
+		}
 
 		if seed == 0 {
 			seed = time.Now().UnixNano()
@@ -112,6 +132,21 @@ schema and optional generator overrides.`,
 			}
 		}
 
+		if generatorsFile != "" {
+			genConfig, err := loadGenerators(generatorsFile)
+			if err != nil {
+				return fmt.Errorf("load generators: %w", err)
+			}
+			sg.SetOverrides(genConfig)
+			if verbose {
+				tables := make([]string, 0, len(genConfig))
+				for name := range genConfig {
+					tables = append(tables, name)
+				}
+				fmt.Printf("Loaded generator overrides for: %v\n", tables)
+			}
+		}
+
 		var w writerinterface.Writer
 
 		if dbDSN != "" {
@@ -154,9 +189,7 @@ schema and optional generator overrides.`,
 
 			w = dbWriter
 		} else {
-			format, _ := cmd.Flags().GetString("format")
-
-			switch format {
+			switch formatStr {
 			case "csv":
 				if err := os.MkdirAll(output, 0755); err != nil {
 					return fmt.Errorf("create output dir: %w", err)
@@ -233,6 +266,70 @@ func loadHints(path string) (map[string]map[string]schema.GeneratorHint, error) 
 	return hf, nil
 }
 
+func loadGenerators(path string) (map[string]*generator.TableConfig, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("read generators file: %w", err)
+	}
+
+	var config generator.GeneratorsConfig
+	if err := yaml.Unmarshal(data, &config); err != nil {
+		return nil, fmt.Errorf("parse generators: %w", err)
+	}
+
+	return generator.GeneratorsConfigToTableConfigs(config), nil
+}
+
+func loadConfigOrDefault(path string) *Config {
+	if path != "" {
+		cfg, err := loadConfig(path)
+		if err == nil {
+			return cfg
+		}
+	}
+	cfg, err := loadConfig("seedling.yaml")
+	if err == nil {
+		return cfg
+	}
+	return nil
+}
+
+func applyConfigString(v *string, cmd *cobra.Command, flag string, cfgVal string) {
+	if cmd.Flags().Changed(flag) {
+		return
+	}
+	if cfgVal != "" {
+		*v = cfgVal
+	}
+}
+
+func applyConfigInt(v *int, cmd *cobra.Command, flag string, cfgVal int) {
+	if cmd.Flags().Changed(flag) {
+		return
+	}
+	if cfgVal != 0 {
+		*v = cfgVal
+	}
+}
+
+func applyConfigInt64(v *int64, cmd *cobra.Command, flag string, cfgVal int64) {
+	if cmd.Flags().Changed(flag) {
+		return
+	}
+	if cfgVal != 0 {
+		*v = cfgVal
+	}
+}
+
+func applyConfigBool(v *bool, cmd *cobra.Command, flag string, cfgVal bool) {
+	if cmd.Flags().Changed(flag) {
+		return
+	}
+	if cfgVal {
+		*v = cfgVal
+	}
+}
+
 func init() {
 	generateCmd.Flags().Int("count", 100, "Number of rows per root table")
 	generateCmd.Flags().Int64("seed", 0, "Random seed (0 = random)")
@@ -243,7 +340,7 @@ func init() {
 	generateCmd.Flags().String("db", "", "Database DSN for direct insert")
 	generateCmd.Flags().Bool("copy", false, "Use COPY protocol (Postgres only)")
 	generateCmd.Flags().Bool("truncate", false, "TRUNCATE tables before inserting")
-	generateCmd.Flags().String("generators", "", "Path to Go generator files")
+	generateCmd.Flags().String("generators", "", "Path to YAML generator config file")
 	generateCmd.Flags().String("config", "", "Path to seedling.yaml config")
 	generateCmd.Flags().String("preset", "", "Use a saved preset")
 	generateCmd.Flags().Bool("dry-run", false, "Print plan without generating")
