@@ -23,6 +23,7 @@ type FKPool struct {
 	strategies map[string]FKStrategy
 	roundRobin map[string]int
 	weights    map[string][]float64
+	unique     map[string][]any
 }
 
 func NewFKPool() *FKPool {
@@ -33,6 +34,7 @@ func NewFKPool() *FKPool {
 		strategies: make(map[string]FKStrategy),
 		roundRobin: make(map[string]int),
 		weights:    make(map[string][]float64),
+		unique:     make(map[string][]any),
 	}
 }
 
@@ -122,14 +124,16 @@ func (p *FKPool) Consume(table string, consumerKey string) (any, error) {
 	}
 	used := p.consumed[usedKey]
 
-	if len(used) >= len(pool) {
-		return nil, fmt.Errorf("fkpool: all rows for table %q already consumed by %q", table, consumerKey)
+	uniquePool := p.dedupedPool(table, pool)
+	if len(used) >= len(uniquePool) {
+		return nil, fmt.Errorf("fkpool: all %d unique rows for table %q already consumed by %q (pool has %d entries, %d unique)",
+			len(uniquePool), table, consumerKey, len(pool), len(uniquePool))
 	}
 
-	start := p.rnd.Int63n(int64(len(pool)))
-	for i := range pool {
-		idx := (start + int64(i)) % int64(len(pool))
-		val := pool[idx]
+	start := p.rnd.Int63n(int64(len(uniquePool)))
+	for i := range uniquePool {
+		idx := (start + int64(i)) % int64(len(uniquePool))
+		val := uniquePool[idx]
 		if !used[val] {
 			used[val] = true
 			return val, nil
@@ -137,6 +141,22 @@ func (p *FKPool) Consume(table string, consumerKey string) (any, error) {
 	}
 
 	return nil, fmt.Errorf("fkpool: no unconsumed rows for table %q for %q", table, consumerKey)
+}
+
+func (p *FKPool) dedupedPool(table string, pool []any) []any {
+	if cached, ok := p.unique[table]; ok {
+		return cached
+	}
+	seen := make(map[any]struct{}, len(pool))
+	deduped := make([]any, 0, len(pool))
+	for _, v := range pool {
+		if _, ok := seen[v]; !ok {
+			seen[v] = struct{}{}
+			deduped = append(deduped, v)
+		}
+	}
+	p.unique[table] = deduped
+	return deduped
 }
 
 func (p *FKPool) Count(table string) int {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"strings"
 
 	gen "github.com/tomiwa-a/seedling/pkg/generator"
 	"github.com/tomiwa-a/seedling/pkg/schema"
@@ -55,6 +56,16 @@ func ResolveGenerator(col *schema.Column, hint schema.GeneratorHint, pool *FKPoo
 			return &LoremGenerator{MinWords: 1, MaxWords: 3}, nil
 		}
 		return &EnumPicker{Values: col.EnumValues}, nil
+	}
+
+	// Upgrade bigint/integer to serial when a sequence default is present
+	if col.Default != nil && strings.Contains(*col.Default, "nextval(") {
+		switch col.Type {
+		case schema.TypeBigInt:
+			return NewSerialGenerator(0), nil
+		case schema.TypeInteger, schema.TypeSmallInt:
+			return NewSerialGenerator(0), nil
+		}
 	}
 
 	switch hint {

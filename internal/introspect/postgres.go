@@ -3,6 +3,7 @@ package introspect
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/tomiwa-a/seedling/pkg/schema"
@@ -184,6 +185,13 @@ func (pi *PostgresIntrospector) extractColumns(ctx context.Context, schemaName, 
 		}
 
 		colType := mapColumnType(rc.UDTName, rc.DataType)
+
+		if colType == schema.TypeBigInt && rc.ColumnDefault != nil && strings.Contains(*rc.ColumnDefault, "nextval(") {
+			colType = schema.TypeBigSerial
+		}
+		if colType == schema.TypeInteger && rc.ColumnDefault != nil && strings.Contains(*rc.ColumnDefault, "nextval(") {
+			colType = schema.TypeSerial
+		}
 
 		col := &schema.Column{
 			Name:     rc.Name,
