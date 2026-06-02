@@ -4,6 +4,7 @@ go 1.25.0
 
 require (
 	github.com/cheggaaa/pb/v3 v3.1.7
+	github.com/fsnotify/fsnotify v1.10.1
 	github.com/go-sql-driver/mysql v1.10.0
 	github.com/jackc/pgx/v5 v5.9.2
 	github.com/spf13/cobra v1.10.2

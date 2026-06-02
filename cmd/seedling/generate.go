@@ -18,14 +18,30 @@ import (
 	writerinterface "github.com/tomiwa-a/seedling/pkg/writer"
 )
 
+type generateParams struct {
+	ctx            context.Context
+	schemaFile     string
+	configFile     string
+	generatorsFile string
+	output         string
+	formatStr      string
+	count          int
+	seed           int64
+	dbDSN          string
+	useCopy        bool
+	truncate       bool
+	parallel       bool
+	dryRun         bool
+	verbose        bool
+	batchSize      int
+}
+
 var generateCmd = &cobra.Command{
 	Use:   "generate",
 	Short: "Generate test data",
 	Long: `Generate realistic test data based on an introspected
 schema and optional generator overrides.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		ctx := cmd.Context()
-
 		count, _ := cmd.Flags().GetInt("count")
 		output, _ := cmd.Flags().GetString("output")
 		schemaFile, _ := cmd.Flags().GetString("schema")
@@ -58,176 +74,212 @@ schema and optional generator overrides.`,
 			applyConfigBool(&useCopy, cmd, "copy", cfg.Output.UseCopy)
 		}
 
-		if seed == 0 {
-			seed = time.Now().UnixNano()
-		}
+		return runGenerate(generateParams{
+			ctx:            cmd.Context(),
+			schemaFile:     schemaFile,
+			configFile:     configFile,
+			generatorsFile: generatorsFile,
+			output:         output,
+			formatStr:      formatStr,
+			count:          count,
+			seed:           seed,
+			dbDSN:          dbDSN,
+			useCopy:        useCopy,
+			truncate:       truncate,
+			parallel:       parallel,
+			dryRun:         dryRun,
+			verbose:        verbose,
+			batchSize:      batchSize,
+		})
+	},
+}
 
-		sch, err := loadSchema(schemaFile)
-		if err != nil {
-			return fmt.Errorf("load schema: %w", err)
-		}
+func runGenerate(p generateParams) error {
+	ctx := p.ctx
+	count := p.count
+	output := p.output
+	schemaFile := p.schemaFile
+	configFile := p.configFile
+	generatorsFile := p.generatorsFile
+	dryRun := p.dryRun
+	verbose := p.verbose
+	batchSize := p.batchSize
+	seed := p.seed
+	dbDSN := p.dbDSN
+	useCopy := p.useCopy
+	truncate := p.truncate
+	parallel := p.parallel
+	formatStr := p.formatStr
 
-		if verbose {
-			fmt.Printf("Loaded schema: %s (%d tables)\n", sch.Name, len(sch.Tables))
-		}
+	if seed == 0 {
+		seed = time.Now().UnixNano()
+	}
 
-		pb := internalplanbuilder.NewWithSeed(count, seed)
-		plan, err := pb.Build(ctx, sch, nil)
-		if err != nil {
-			return fmt.Errorf("build plan: %w", err)
-		}
+	sch, err := loadSchema(schemaFile)
+	if err != nil {
+		return fmt.Errorf("load schema: %w", err)
+	}
 
-		if dryRun {
-			fmt.Printf("Plan: %d total rows across %d tables\n", plan.TotalCount, len(plan.Tables))
-			for _, tp := range plan.Tables {
-				fmt.Printf("  %s: %d rows\n", tp.Table.Name, tp.Count)
-			}
-			if plan.CircularGroup != nil {
-				fmt.Printf("Circular FKs detected: %d pass1 tables, %d pass2 tables\n",
-					len(plan.CircularGroup.Pass1Tables), len(plan.CircularGroup.Pass2Tables))
-			}
-			return nil
-		}
+	if verbose {
+		fmt.Printf("Loaded schema: %s (%d tables)\n", sch.Name, len(sch.Tables))
+	}
 
-		sg := internalstream.New()
-		sg.SetSeed(uint64(seed))
-		sg.SetParallel(parallel)
+	pb := internalplanbuilder.NewWithSeed(count, seed)
+	plan, err := pb.Build(ctx, sch, nil)
+	if err != nil {
+		return fmt.Errorf("build plan: %w", err)
+	}
 
-		if verbose {
-			fmt.Printf("Using seed: %d\n", seed)
-			sg.SetProgress(newProgressCallback(verbose))
-		}
-
+	if dryRun {
+		fmt.Printf("Plan: %d total rows across %d tables\n", plan.TotalCount, len(plan.Tables))
 		for _, tp := range plan.Tables {
-			colHints := make(map[string]schema.GeneratorHint)
-			for _, col := range tp.Table.Columns {
-				if col.Hint != "" && col.Hint != schema.HintAuto {
-					colHints[col.Name] = col.Hint
-				}
-			}
-			if len(colHints) > 0 {
-				sg.SetHints(tp.Table.Name, colHints)
-			}
+			fmt.Printf("  %s: %d rows\n", tp.Table.Name, tp.Count)
 		}
-
-		if configFile != "" {
-			hints, err := loadHints(configFile)
-			if err != nil {
-				return err
-			}
-			for _, tp := range plan.Tables {
-				if h, ok := hints[tp.Table.Name]; ok {
-					for col, hint := range h {
-						sg.SetHint(tp.Table.Name, col, hint)
-					}
-				}
-			}
-		}
-
-		if generatorsFile != "" {
-			genConfig, err := loadGenerators(generatorsFile)
-			if err != nil {
-				return fmt.Errorf("load generators: %w", err)
-			}
-			sg.SetOverrides(genConfig)
-			if verbose {
-				tables := make([]string, 0, len(genConfig))
-				for name := range genConfig {
-					tables = append(tables, name)
-				}
-				fmt.Printf("Loaded generator overrides for: %v\n", tables)
-			}
-		}
-
-		var w writerinterface.Writer
-
-		if dbDSN != "" {
-			if verbose {
-				fmt.Printf("Connecting to: %s\n", dbDSN)
-			}
-
-			var dbWriter writerinterface.Writer
-			if isMysqlDSN(dbDSN) {
-				dbWriter, err = internalwriter.NewMysqlWriter(ctx, dbDSN,
-					internalwriter.WithMysqlBatchSize(batchSize))
-			} else if useCopy {
-				dbWriter, err = internalwriter.NewCopyWriter(ctx, dbDSN,
-					internalwriter.WithDbSchema(sch.Name),
-					internalwriter.WithDbBatchSize(batchSize))
-			} else {
-				dbWriter, err = internalwriter.NewDbWriter(ctx, dbDSN,
-					internalwriter.WithDbSchema(sch.Name),
-					internalwriter.WithDbBatchSize(batchSize))
-			}
-			if err != nil {
-				return fmt.Errorf("connect to database: %w", err)
-			}
-			defer dbWriter.Close()
-
-			if truncate {
-				if verbose {
-					fmt.Println("Truncating tables...")
-				}
-				for _, tp := range plan.Tables {
-					if truncatable, ok := dbWriter.(interface {
-						Truncate(context.Context, *schema.Table) error
-					}); ok {
-						if err := truncatable.Truncate(ctx, tp.Table); err != nil {
-							return fmt.Errorf("truncate %s: %w", tp.Table.Name, err)
-						}
-					}
-				}
-			}
-
-			w = dbWriter
-		} else {
-			switch formatStr {
-			case "csv":
-				if err := os.MkdirAll(output, 0755); err != nil {
-					return fmt.Errorf("create output dir: %w", err)
-				}
-				w = internalwriter.NewCsvWriter(output)
-			case "jsonl", "jsonlines":
-				if err := os.MkdirAll(output, 0755); err != nil {
-					return fmt.Errorf("create output dir: %w", err)
-				}
-				w = internalwriter.NewJsonLinesWriter(output)
-			case "parquet":
-				if err := os.MkdirAll(output, 0755); err != nil {
-					return fmt.Errorf("create output dir: %w", err)
-				}
-				w = internalwriter.NewParquetWriter(output)
-			default:
-				outFile, err := os.Create(output)
-				if err != nil {
-					return fmt.Errorf("create output: %w", err)
-				}
-				defer outFile.Close()
-				w = internalwriter.NewSqlWriter(outFile, internalwriter.WithBatchSize(batchSize))
-			}
-		}
-
-		if verbose {
-			fmt.Printf("Generating %d rows across %d tables...\n", plan.TotalCount, len(plan.Tables))
-		}
-
-		start := time.Now()
-		if err := sg.Generate(ctx, plan, w); err != nil {
-			return fmt.Errorf("generate: %w", err)
-		}
-		elapsed := time.Since(start)
-
-		if verbose {
-			if dbDSN != "" {
-				fmt.Printf("Inserted %d rows in %s (%.0f rows/sec)\n",
-					plan.TotalCount, elapsed.Truncate(time.Millisecond),
-					float64(plan.TotalCount)/elapsed.Seconds())
-			} else {
-				fmt.Printf("Output written to %s (%s)\n", output, elapsed.Truncate(time.Millisecond))
-			}
+		if plan.CircularGroup != nil {
+			fmt.Printf("Circular FKs detected: %d pass1 tables, %d pass2 tables\n",
+				len(plan.CircularGroup.Pass1Tables), len(plan.CircularGroup.Pass2Tables))
 		}
 		return nil
-	},
+	}
+
+	sg := internalstream.New()
+	sg.SetSeed(uint64(seed))
+	sg.SetParallel(parallel)
+
+	if verbose {
+		fmt.Printf("Using seed: %d\n", seed)
+		sg.SetProgress(newProgressCallback(verbose))
+	}
+
+	for _, tp := range plan.Tables {
+		colHints := make(map[string]schema.GeneratorHint)
+		for _, col := range tp.Table.Columns {
+			if col.Hint != "" && col.Hint != schema.HintAuto {
+				colHints[col.Name] = col.Hint
+			}
+		}
+		if len(colHints) > 0 {
+			sg.SetHints(tp.Table.Name, colHints)
+		}
+	}
+
+	if configFile != "" {
+		hints, err := loadHints(configFile)
+		if err != nil {
+			return err
+		}
+		for _, tp := range plan.Tables {
+			if h, ok := hints[tp.Table.Name]; ok {
+				for col, hint := range h {
+					sg.SetHint(tp.Table.Name, col, hint)
+				}
+			}
+		}
+	}
+
+	if generatorsFile != "" {
+		genConfig, err := loadGenerators(generatorsFile)
+		if err != nil {
+			return fmt.Errorf("load generators: %w", err)
+		}
+		sg.SetOverrides(genConfig)
+		if verbose {
+			tables := make([]string, 0, len(genConfig))
+			for name := range genConfig {
+				tables = append(tables, name)
+			}
+			fmt.Printf("Loaded generator overrides for: %v\n", tables)
+		}
+	}
+
+	var w writerinterface.Writer
+
+	if dbDSN != "" {
+		if verbose {
+			fmt.Printf("Connecting to: %s\n", dbDSN)
+		}
+
+		var dbWriter writerinterface.Writer
+		if isMysqlDSN(dbDSN) {
+			dbWriter, err = internalwriter.NewMysqlWriter(ctx, dbDSN,
+				internalwriter.WithMysqlBatchSize(batchSize))
+		} else if useCopy {
+			dbWriter, err = internalwriter.NewCopyWriter(ctx, dbDSN,
+				internalwriter.WithDbSchema(sch.Name),
+				internalwriter.WithDbBatchSize(batchSize))
+		} else {
+			dbWriter, err = internalwriter.NewDbWriter(ctx, dbDSN,
+				internalwriter.WithDbSchema(sch.Name),
+				internalwriter.WithDbBatchSize(batchSize))
+		}
+		if err != nil {
+			return fmt.Errorf("connect to database: %w", err)
+		}
+		defer dbWriter.Close()
+
+		if truncate {
+			if verbose {
+				fmt.Println("Truncating tables...")
+			}
+			for _, tp := range plan.Tables {
+				if truncatable, ok := dbWriter.(interface {
+					Truncate(context.Context, *schema.Table) error
+				}); ok {
+					if err := truncatable.Truncate(ctx, tp.Table); err != nil {
+						return fmt.Errorf("truncate %s: %w", tp.Table.Name, err)
+					}
+				}
+			}
+		}
+
+		w = dbWriter
+	} else {
+		switch formatStr {
+		case "csv":
+			if err := os.MkdirAll(output, 0755); err != nil {
+				return fmt.Errorf("create output dir: %w", err)
+			}
+			w = internalwriter.NewCsvWriter(output)
+		case "jsonl", "jsonlines":
+			if err := os.MkdirAll(output, 0755); err != nil {
+				return fmt.Errorf("create output dir: %w", err)
+			}
+			w = internalwriter.NewJsonLinesWriter(output)
+		case "parquet":
+			if err := os.MkdirAll(output, 0755); err != nil {
+				return fmt.Errorf("create output dir: %w", err)
+			}
+			w = internalwriter.NewParquetWriter(output)
+		default:
+			outFile, err := os.Create(output)
+			if err != nil {
+				return fmt.Errorf("create output: %w", err)
+			}
+			defer outFile.Close()
+			w = internalwriter.NewSqlWriter(outFile, internalwriter.WithBatchSize(batchSize))
+		}
+	}
+
+	if verbose {
+		fmt.Printf("Generating %d rows across %d tables...\n", plan.TotalCount, len(plan.Tables))
+	}
+
+	start := time.Now()
+	if err := sg.Generate(ctx, plan, w); err != nil {
+		return fmt.Errorf("generate: %w", err)
+	}
+	elapsed := time.Since(start)
+
+	if verbose {
+		if dbDSN != "" {
+			fmt.Printf("Inserted %d rows in %s (%.0f rows/sec)\n",
+				plan.TotalCount, elapsed.Truncate(time.Millisecond),
+				float64(plan.TotalCount)/elapsed.Seconds())
+		} else {
+			fmt.Printf("Output written to %s (%s)\n", output, elapsed.Truncate(time.Millisecond))
+		}
+	}
+	return nil
 }
 
 type hintsFile map[string]map[string]schema.GeneratorHint
